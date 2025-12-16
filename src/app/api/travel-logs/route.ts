@@ -78,6 +78,8 @@ export async function POST(request: NextRequest) {
     const payload = await getPayload({ config })
     const body = await request.json()
 
+    console.log('Received travel log data:', body)
+
     // Validate required fields
     if (!body.employee || !body.destination || !body.purpose || !body.departureTime) {
       return NextResponse.json(
@@ -103,9 +105,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Format dates for Payload CMS
+    const formattedData = {
+      ...body,
+      departureTime: new Date(body.departureTime).toISOString(),
+      expectedReturn: body.expectedReturn ? new Date(body.expectedReturn).toISOString() : undefined,
+      // Don't send status if it's not provided - let the collection default handle it
+      ...(body.status && { status: body.status }),
+    }
+
+    console.log('Creating travel log with data:', formattedData)
+
     const travelLog = await payload.create({
       collection: 'travel-logs',
-      data: body,
+      data: formattedData,
     })
 
     return NextResponse.json({
@@ -116,15 +129,29 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating travel log:', error)
 
-    if (error instanceof Error && error.message.includes('BSONError')) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid ID format',
-          details: 'Employee ID must be a valid 24-character hex string',
-        },
-        { status: 400 },
-      )
+    if (error instanceof Error) {
+      // Check for validation errors
+      if (error.message.includes('ValidationError')) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Validation error',
+            details: error.message,
+          },
+          { status: 400 },
+        )
+      }
+
+      if (error.message.includes('BSONError')) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid ID format',
+            details: 'Employee ID must be a valid 24-character hex string',
+          },
+          { status: 400 },
+        )
+      }
     }
 
     return NextResponse.json(

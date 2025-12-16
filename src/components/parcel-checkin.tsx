@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { toast } from 'sonner'
 
 type ParcelFormData = z.infer<typeof parcelSchema>
 
@@ -60,6 +61,7 @@ export default function ParcelCheckin({ onSubmitSuccess, onCancel }: ParcelCheck
           setEmployees(result.data)
         }
       } catch (error) {
+        toast.error()
         console.error('Error fetching employees:', error)
       } finally {
         setLoadingEmployees(false)
@@ -81,14 +83,14 @@ export default function ParcelCheckin({ onSubmitSuccess, onCancel }: ParcelCheck
       })
 
       if (response.ok) {
-        alert('Parcel logged successfully!')
+        toast.success('Parcel logged successfully!')
         reset()
         if (onSubmitSuccess) {
           onSubmitSuccess(data)
         }
       } else {
         const errorData = await response.json()
-        alert(
+        toast.error(
           `Failed to log parcel: ${errorData.error || 'Unknown error'}\n${errorData.details || ''}`,
         )
       }

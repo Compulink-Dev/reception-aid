@@ -15,11 +15,23 @@ export const visitorSchema = z.object({
 })
 
 export const travelLogSchema = z.object({
-  employee: z.string(),
-  destination: z.string().min(2, 'Destination is required'),
-  purpose: z.string().min(10, 'Please provide a detailed purpose'),
-  departureTime: z.date(),
-  expectedReturn: z.date().optional(),
+  employee: z.string().min(1, 'Employee is required'),
+  destination: z.string().min(1, 'Destination is required'),
+  purpose: z.string().min(1, 'Purpose is required'),
+  departureTime: z.string().min(1, 'Departure time is required'),
+  expectedReturn: z.string().optional(),
+  status: z
+    .enum(['pending', 'approved', 'departed', 'returned', 'cancelled'])
+    .optional()
+    .default('pending'),
+  travelType: z
+    .enum(['business', 'client_visit', 'conference', 'training', 'other'])
+    .optional()
+    .default('business'),
+  transportation: z.enum(['flight', 'car', 'train', 'bus', 'other']).optional().default('flight'),
+  accommodation: z.string().optional(),
+  estimatedCost: z.number().min(0).optional().nullable(),
+  notes: z.string().optional(),
 })
 
 export const parcelSchema = z.object({

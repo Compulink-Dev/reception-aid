@@ -287,7 +287,12 @@ export interface TravelLog {
   departureTime: string;
   expectedReturn?: string | null;
   actualReturn?: string | null;
-  status?: ('departed' | 'returned' | 'delayed') | null;
+  status: 'pending' | 'approved' | 'departed' | 'returned' | 'cancelled';
+  travelType?: ('business' | 'client_visit' | 'conference' | 'training' | 'other') | null;
+  transportation?: ('flight' | 'car' | 'bus' | 'train' | 'other') | null;
+  accommodation?: string | null;
+  estimatedCost?: number | null;
+  notes?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -618,6 +623,11 @@ export interface TravelLogsSelect<T extends boolean = true> {
   expectedReturn?: T;
   actualReturn?: T;
   status?: T;
+  travelType?: T;
+  transportation?: T;
+  accommodation?: T;
+  estimatedCost?: T;
+  notes?: T;
   updatedAt?: T;
   createdAt?: T;
 }

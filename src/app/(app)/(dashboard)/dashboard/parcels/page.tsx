@@ -37,6 +37,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import ParcelChecking from '@/components/parcel-checkin'
+import { toast } from 'sonner'
 
 // Define Parcel interface based on your MongoDB schema
 interface Parcel {
@@ -143,14 +144,15 @@ export default function ParcelsPage() {
       if (response.ok) {
         // Refresh the parcel list
         fetchParcels(searchTerm)
+        toast.success('Parcel marked as collected successfully')
       } else {
         const error = await response.json()
         console.error('Failed to update parcel:', error)
-        alert(`Failed to mark as collected: ${error.message || 'Unknown error'}`)
+        toast(`Failed to mark as collected: ${error.message || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error updating parcel:', error)
-      alert('Error updating parcel. Please try again.')
+      toast('Error updating parcel. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -170,11 +172,11 @@ export default function ParcelsPage() {
         } else {
           const error = await response.json()
           console.error('Failed to delete parcel:', error)
-          alert(`Failed to delete parcel: ${error.message || 'Unknown error'}`)
+          toast.error(`Failed to delete parcel: ${error.message || 'Unknown error'}`)
         }
       } catch (error) {
         console.error('Error deleting parcel:', error)
-        alert('Error deleting parcel. Please try again.')
+        toast.error('Error deleting parcel. Please try again.')
       } finally {
         setLoading(false)
       }

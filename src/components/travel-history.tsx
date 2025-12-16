@@ -1,7 +1,7 @@
 // components/travel/TravelHistory.tsx
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -21,95 +21,64 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, Filter, Download, Calendar, User, MapPin, ChevronDown, Eye } from 'lucide-react'
+import { Search, Filter, Download, MapPin, Eye, RefreshCw, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { toast } from 'sonner'
 
-const mockTravelHistory = [
-  {
-    id: '1',
-    employee: 'John Doe',
-    department: 'Sales',
-    destination: 'New York, USA',
-    purpose: 'Client Meeting - TechCorp',
-    departureDate: '2024-01-15',
-    returnDate: '2024-01-18',
-    duration: '3 days',
-    cost: 2450,
-    status: 'completed',
-    type: 'Business Meeting',
-    approvalStatus: 'approved',
-  },
-  {
-    id: '2',
-    employee: 'Jane Smith',
-    department: 'IT',
-    destination: 'London, UK',
-    purpose: 'Annual Tech Conference',
-    departureDate: '2024-01-10',
-    returnDate: '2024-01-15',
-    duration: '5 days',
-    cost: 3200,
-    status: 'completed',
-    type: 'Conference',
-    approvalStatus: 'approved',
-  },
-  {
-    id: '3',
-    employee: 'Mike Chen',
-    department: 'Marketing',
-    destination: 'Tokyo, Japan',
-    purpose: 'Product Launch Event',
-    departureDate: '2024-01-05',
-    returnDate: '2024-01-12',
-    duration: '7 days',
-    cost: 4150,
-    status: 'completed',
-    type: 'Event',
-    approvalStatus: 'approved',
-  },
-  {
-    id: '4',
-    employee: 'Sarah Johnson',
-    department: 'HR',
-    destination: 'Berlin, Germany',
-    purpose: 'HR Conference',
-    departureDate: '2024-01-08',
-    returnDate: '2024-01-10',
-    duration: '2 days',
-    cost: 1850,
-    status: 'cancelled',
-    type: 'Conference',
-    approvalStatus: 'approved',
-  },
-  {
-    id: '5',
-    employee: 'Tom Harris',
-    department: 'Executive',
-    destination: 'Paris, France',
-    purpose: 'Board Meeting',
-    departureDate: '2024-01-20',
-    returnDate: '2024-01-22',
-    duration: '2 days',
-    cost: 2950,
-    status: 'in-progress',
-    type: 'Meeting',
-    approvalStatus: 'approved',
-  },
-]
+// Interface for travel log from API
+interface TravelLog {
+  id: string
+  employee:
+    | string
+    | {
+        id: string
+        name: string
+        department?: string
+        email: string
+      }
+  destination: string
+  purpose: string
+  departureTime: string
+  expectedReturn?: string
+  actualReturn?: string
+  status: 'pending' | 'approved' | 'departed' | 'returned' | 'cancelled'
+  travelType?: 'business' | 'client_visit' | 'conference' | 'training' | 'other'
+  transportation?: 'flight' | 'car' | 'train' | 'bus' | 'other'
+  accommodation?: string
+  estimatedCost?: number
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+// API response type
+interface TravelHistoryResponse {
+  success: boolean
+  data: TravelLog[]
+  pagination?: {
+    totalDocs: number
+    totalPages: number
+    page: number
+    limit: number
+    hasNextPage: boolean
+    hasPrevPage: boolean
+  }
+}
 
 const statusColors = {
-  completed: 'bg-green-100 text-green-800',
-  'in-progress': 'bg-blue-100 text-blue-800',
-  cancelled: 'bg-red-100 text-red-800',
-  pending: 'bg-yellow-100 text-yellow-800',
+  pending: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
+  approved: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
+  departed: 'bg-purple-100 text-purple-800 hover:bg-purple-100',
+  returned: 'bg-green-100 text-green-800 hover:bg-green-100',
+  cancelled: 'bg-red-100 text-red-800 hover:bg-red-100',
 }
 
 const typeColors = {
-  'Business Meeting': 'bg-purple-100 text-purple-800',
-  Conference: 'bg-orange-100 text-orange-800',
-  Event: 'bg-pink-100 text-pink-800',
-  Meeting: 'bg-indigo-100 text-indigo-800',
-  Training: 'bg-cyan-100 text-cyan-800',
+  business: 'bg-purple-100 text-purple-800 hover:bg-purple-100',
+  client_visit: 'bg-green-100 text-green-800 hover:bg-green-100',
+  conference: 'bg-orange-100 text-orange-800 hover:bg-orange-100',
+  training: 'bg-cyan-100 text-cyan-800 hover:bg-cyan-100',
+  other: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
 }
 
 export default function TravelHistory() {
@@ -118,16 +87,75 @@ export default function TravelHistory() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [sortBy, setSortBy] = useState('date')
+  const [travelLogs, setTravelLogs] = useState<TravelLog[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [departments, setDepartments] = useState<string[]>([])
 
-  const filteredHistory = mockTravelHistory.filter((travel) => {
+  // Fetch travel logs on component mount
+  useEffect(() => {
+    fetchTravelLogs()
+  }, [])
+
+  const fetchTravelLogs = async (search?: string) => {
+    try {
+      setRefreshing(true)
+      const params = new URLSearchParams()
+      if (search) {
+        params.append('search', search)
+      }
+      // Get all travel logs for history view
+      params.append('limit', '100')
+
+      const response = await fetch(`/api/travel-logs?${params.toString()}`)
+      const result: TravelHistoryResponse = await response.json()
+
+      if (result.success) {
+        setTravelLogs(result.data)
+        // Extract unique departments from employees
+        const uniqueDepartments = Array.from(
+          new Set(
+            result.data
+              .map((log) => {
+                if (typeof log.employee === 'object' && log.employee.department) {
+                  return log.employee.department
+                }
+                return null
+              })
+              .filter(Boolean) as string[],
+          ),
+        )
+        setDepartments(uniqueDepartments)
+      } else {
+        toast.error('Failed to fetch travel history')
+      }
+    } catch (error) {
+      console.error('Error fetching travel logs:', error)
+      toast.error('Error loading travel history')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value)
+    fetchTravelLogs(value)
+  }
+
+  const filteredHistory = travelLogs.filter((travel) => {
+    const employeeName =
+      typeof travel.employee === 'object' ? travel.employee.name : travel.employee
+    const employeeDepartment = typeof travel.employee === 'object' ? travel.employee.department : ''
+
     const matchesSearch =
-      travel.employee.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       travel.destination.toLowerCase().includes(searchTerm.toLowerCase()) ||
       travel.purpose.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesDepartment = departmentFilter === 'all' || travel.department === departmentFilter
+    const matchesDepartment = departmentFilter === 'all' || employeeDepartment === departmentFilter
     const matchesStatus = statusFilter === 'all' || travel.status === statusFilter
-    const matchesType = typeFilter === 'all' || travel.type === typeFilter
+    const matchesType = typeFilter === 'all' || travel.travelType === typeFilter
 
     return matchesSearch && matchesDepartment && matchesStatus && matchesType
   })
@@ -135,15 +163,28 @@ export default function TravelHistory() {
   const sortedHistory = [...filteredHistory].sort((a, b) => {
     switch (sortBy) {
       case 'date':
-        return new Date(b.departureDate).getTime() - new Date(a.departureDate).getTime()
+        return new Date(b.departureTime).getTime() - new Date(a.departureTime).getTime()
       case 'cost':
-        return b.cost - a.cost
-      case 'duration':
-        return parseInt(b.duration) - parseInt(a.duration)
+        return (b.estimatedCost || 0) - (a.estimatedCost || 0)
+      case 'destination':
+        return a.destination.localeCompare(b.destination)
       default:
         return 0
     }
   })
+
+  const getDuration = (startDate: string, endDate?: string) => {
+    if (!endDate) return 'N/A'
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const diffTime = Math.abs(end.getTime() - start.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return `${diffDays} day${diffDays !== 1 ? 's' : ''}`
+  }
+
+  const getReturnDate = (travel: TravelLog) => {
+    return travel.actualReturn || travel.expectedReturn
+  }
 
   const exportToCSV = () => {
     const headers = [
@@ -152,31 +193,95 @@ export default function TravelHistory() {
       'Destination',
       'Purpose',
       'Departure',
-      'Return',
+      'Expected Return',
+      'Actual Return',
       'Duration',
       'Cost',
       'Status',
+      'Travel Type',
+      'Transportation',
+      'Accommodation',
     ]
-    const csvData = sortedHistory.map((t) => [
-      t.employee,
-      t.department,
-      t.destination,
-      t.purpose,
-      t.departureDate,
-      t.returnDate,
-      t.duration,
-      `$${t.cost}`,
-      t.status,
-    ])
+
+    const csvData = sortedHistory.map((travel) => {
+      const employeeName =
+        typeof travel.employee === 'object' ? travel.employee.name : travel.employee
+      const employeeDepartment =
+        typeof travel.employee === 'object' ? travel.employee.department : ''
+      const returnDate = getReturnDate(travel)
+
+      return [
+        employeeName,
+        employeeDepartment || '',
+        travel.destination,
+        travel.purpose,
+        format(new Date(travel.departureTime), 'yyyy-MM-dd HH:mm'),
+        travel.expectedReturn ? format(new Date(travel.expectedReturn), 'yyyy-MM-dd HH:mm') : '',
+        travel.actualReturn ? format(new Date(travel.actualReturn), 'yyyy-MM-dd HH:mm') : '',
+        getDuration(travel.departureTime, returnDate),
+        travel.estimatedCost ? `$${travel.estimatedCost.toLocaleString()}` : '',
+        travel.status,
+        travel.travelType || '',
+        travel.transportation || '',
+        travel.accommodation || '',
+      ]
+    })
 
     const csvContent = [headers.join(','), ...csvData.map((row) => row.join(','))].join('\n')
-
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'travel-history.csv'
+    a.download = `travel-history-${format(new Date(), 'yyyy-MM-dd')}.csv`
     a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
+  const viewDetails = (travel: TravelLog) => {
+    const employeeName =
+      typeof travel.employee === 'object' ? travel.employee.name : travel.employee
+    const employeeDepartment = typeof travel.employee === 'object' ? travel.employee.department : ''
+    const employeeEmail = typeof travel.employee === 'object' ? travel.employee.email : ''
+
+    const details = [
+      `Employee: ${employeeName}`,
+      employeeDepartment && `Department: ${employeeDepartment}`,
+      employeeEmail && `Email: ${employeeEmail}`,
+      `Destination: ${travel.destination}`,
+      `Purpose: ${travel.purpose}`,
+      `Status: ${travel.status}`,
+      `Departure: ${format(new Date(travel.departureTime), 'MMM d, yyyy HH:mm')}`,
+      travel.expectedReturn &&
+        `Expected Return: ${format(new Date(travel.expectedReturn), 'MMM d, yyyy HH:mm')}`,
+      travel.actualReturn &&
+        `Actual Return: ${format(new Date(travel.actualReturn), 'MMM d, yyyy HH:mm')}`,
+      travel.travelType && `Travel Type: ${travel.travelType.replace('_', ' ')}`,
+      travel.transportation && `Transportation: ${travel.transportation}`,
+      travel.accommodation && `Accommodation: ${travel.accommodation}`,
+      travel.estimatedCost && `Estimated Cost: $${travel.estimatedCost.toLocaleString()}`,
+      travel.notes && `Notes: ${travel.notes}`,
+      `Created: ${format(new Date(travel.createdAt), 'MMM d, yyyy HH:mm')}`,
+      `Last Updated: ${format(new Date(travel.updatedAt), 'MMM d, yyyy HH:mm')}`,
+    ]
+      .filter(Boolean)
+      .join('\n')
+
+    alert(`Travel Details:\n\n${details}`)
+  }
+
+  const refreshData = () => {
+    fetchTravelLogs(searchTerm)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+          <p className="mt-2 text-gray-600">Loading travel history...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -193,7 +298,7 @@ export default function TravelHistory() {
                   placeholder="Search travel history..."
                   className="w-full md:w-[250px] pl-9"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value)}
                 />
               </div>
 
@@ -204,7 +309,7 @@ export default function TravelHistory() {
                 <SelectContent>
                   <SelectItem value="date">Date (Newest)</SelectItem>
                   <SelectItem value="cost">Cost (High to Low)</SelectItem>
-                  <SelectItem value="duration">Duration (Longest)</SelectItem>
+                  <SelectItem value="destination">Destination (A-Z)</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -214,11 +319,11 @@ export default function TravelHistory() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
-                  <SelectItem value="Sales">Sales</SelectItem>
-                  <SelectItem value="IT">IT</SelectItem>
-                  <SelectItem value="Marketing">Marketing</SelectItem>
-                  <SelectItem value="HR">HR</SelectItem>
-                  <SelectItem value="Executive">Executive</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -228,18 +333,43 @@ export default function TravelHistory() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="departed">Departed</SelectItem>
+                  <SelectItem value="returned">Returned</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="business">Business Meeting</SelectItem>
+                  <SelectItem value="client_visit">Client Visit</SelectItem>
+                  <SelectItem value="conference">Conference</SelectItem>
+                  <SelectItem value="training">Training</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
 
               <div className="flex gap-2">
-                <Button variant="outline" size="icon">
-                  <Filter className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={refreshData}
+                  disabled={refreshing}
+                  title="Refresh data"
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 </Button>
-                <Button variant="outline" onClick={exportToCSV}>
+                <Button
+                  variant="outline"
+                  onClick={exportToCSV}
+                  disabled={sortedHistory.length === 0}
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
@@ -255,67 +385,111 @@ export default function TravelHistory() {
                   <TableHead>Employee</TableHead>
                   <TableHead>Destination</TableHead>
                   <TableHead>Purpose</TableHead>
-                  <TableHead>Dates</TableHead>
+                  <TableHead>Departure</TableHead>
+                  <TableHead>Return</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Cost</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedHistory.map((travel) => (
-                  <TableRow key={travel.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{travel.employee}</p>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {travel.department}
-                        </Badge>
+                {refreshing ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="text-center py-8">
+                      <div className="flex items-center justify-center gap-2">
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span className="text-muted-foreground">Refreshing data...</span>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-400" />
-                        <span>{travel.destination}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <p className="truncate" title={travel.purpose}>
-                        {travel.purpose}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>Dep: {format(new Date(travel.departureDate), 'MMM d')}</div>
-                        <div>Ret: {format(new Date(travel.returnDate), 'MMM d')}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{travel.duration}</Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">${travel.cost.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[travel.status as keyof typeof statusColors]}>
-                        {travel.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          typeColors[travel.type as keyof typeof typeColors] || 'bg-gray-100'
-                        }
-                      >
-                        {travel.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : sortedHistory.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      {travelLogs.length === 0
+                        ? 'No travel logs found.'
+                        : 'No matching results. Try adjusting your filters.'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedHistory.map((travel) => {
+                    const employeeName =
+                      typeof travel.employee === 'object' ? travel.employee.name : travel.employee
+                    const employeeDepartment =
+                      typeof travel.employee === 'object' ? travel.employee.department : ''
+                    const returnDate = getReturnDate(travel)
+
+                    return (
+                      <TableRow key={travel.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{employeeName}</p>
+                            {employeeDepartment && (
+                              <Badge variant="outline" className="text-xs mt-1">
+                                {employeeDepartment}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-gray-400" />
+                            <span>{travel.destination}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <p className="truncate" title={travel.purpose}>
+                            {travel.purpose}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm whitespace-nowrap">
+                            {format(new Date(travel.departureTime), 'MMM d, HH:mm')}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm whitespace-nowrap">
+                            {returnDate ? format(new Date(returnDate), 'MMM d, HH:mm') : 'N/A'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {getDuration(travel.departureTime, returnDate)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {travel.estimatedCost
+                            ? `$${travel.estimatedCost.toLocaleString()}`
+                            : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[travel.status]}>
+                            {travel.status.charAt(0).toUpperCase() + travel.status.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {travel.travelType && (
+                            <Badge className={typeColors[travel.travelType]}>
+                              {travel.travelType.replace('_', ' ').charAt(0).toUpperCase() +
+                                travel.travelType.replace('_', ' ').slice(1)}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => viewDetails(travel)}
+                            title="View details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
               </TableBody>
             </Table>
           </div>

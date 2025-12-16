@@ -359,7 +359,7 @@ export default function VisitorsPage() {
                             size="icon"
                             onClick={() => {
                               // Implement view details
-                              alert(
+                              toast(
                                 `Visitor Details:\n\nName: ${visitor.name}\nEmail: ${visitor.email}\nPhone: ${visitor.phone}\nCompany: ${visitor.company}\nPurpose: ${visitor.purpose}\nCheck-in: ${new Date(visitor.checkInTime).toLocaleString()}\nStatus: ${visitor.status}${visitor.notes ? `\nNotes: ${visitor.notes}` : ''}`,
                               )
                             }}

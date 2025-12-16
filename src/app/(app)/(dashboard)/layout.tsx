@@ -115,7 +115,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           icon: <Users className="h-5 w-5" />,
           active: pathname.startsWith('/dashboard/visitors'),
           submenu: [
-            { title: 'Check-in Visitors', href: '/dashboard/visitors' },
+            // { title: 'Check-in Visitors', href: '/dashboard/visitors' },
             { title: 'Visitor Logs', href: '/dashboard/visitors/logs' },
             { title: 'Appointments', href: '/dashboard/visitors/appointments' },
           ],
@@ -126,7 +126,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           icon: <Package className="h-5 w-5" />,
           active: pathname.startsWith('/dashboard/parcels'),
           submenu: [
-            { title: 'Log Parcel', href: '/dashboard/parcels/' },
+            // { title: 'Log Parcel', href: '/dashboard/parcels/' },
             { title: 'Delivery Logs', href: '/dashboard/parcels/deliveries' },
             { title: 'Parcel Tracking', href: '/dashboard/parcels/tracking' },
           ],
@@ -137,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           icon: <PhoneCall className="h-5 w-5" />,
           active: pathname.startsWith('/dashboard/calls'),
           submenu: [
-            { title: 'Log Call', href: '/dashboard/calls/' },
+            // { title: 'Log Call', href: '/dashboard/calls/' },
             { title: 'Call History', href: '/dashboard/calls/history' },
             { title: 'Call Reports', href: '/dashboard/calls/reports' },
           ],
@@ -148,7 +148,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           icon: <Calendar className="h-5 w-5" />,
           active: pathname.startsWith('/dashboard/travel'),
           submenu: [
-            { title: 'Active Travel', href: '/dashboard/travel' },
+            // { title: 'Active Travel', href: '/dashboard/travel' },
             { title: 'Log Departure', href: '/dashboard/travel/log' },
             { title: 'Travel History', href: '/dashboard/travel/history' },
           ],
@@ -164,7 +164,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           icon: <Shield className="h-5 w-5" />,
           active: pathname.startsWith('/dashboard/security'),
           submenu: [
-            { title: 'Vehicle Check-in', href: '/dashboard/security' },
+            // { title: 'Vehicle Check-in', href: '/dashboard/security' },
             { title: 'Parked Vehicles', href: '/dashboard/security/vehicles' },
             { title: 'Mileage Tracker', href: '/dashboard/security/mileage' },
             { title: 'Gate Logs', href: '/dashboard/security/logs' },
@@ -176,7 +176,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           icon: <CarIcon className="h-5 w-5" />,
           active: pathname.startsWith('/dashboard/vehicles'),
           submenu: [
-            { title: 'All Vehicles', href: '/dashboard/vehicles' },
+            // { title: 'All Vehicles', href: '/dashboard/vehicles' },
             { title: 'Company Fleet', href: '/dashboard/vehicles/company' },
             { title: 'Visitor Vehicles', href: '/dashboard/vehicles/visitors' },
           ],
