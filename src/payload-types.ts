@@ -67,8 +67,16 @@ export interface Config {
   };
   blocks: {};
   collections: {
+    appointments: Appointment;
     users: User;
     media: Media;
+    visitors: Visitor;
+    'travel-logs': TravelLog;
+    'parcel-logs': ParcelLog;
+    'phone-calls': PhoneCall;
+    vehicles: Vehicle;
+    employees: Employee;
+    clients: Client;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -76,8 +84,16 @@ export interface Config {
   };
   collectionsJoins: {};
   collectionsSelect: {
+    appointments: AppointmentsSelect<false> | AppointmentsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    visitors: VisitorsSelect<false> | VisitorsSelect<true>;
+    'travel-logs': TravelLogsSelect<false> | TravelLogsSelect<true>;
+    'parcel-logs': ParcelLogsSelect<false> | ParcelLogsSelect<true>;
+    'phone-calls': PhoneCallsSelect<false> | PhoneCallsSelect<true>;
+    vehicles: VehiclesSelect<false> | VehiclesSelect<true>;
+    employees: EmployeesSelect<false> | EmployeesSelect<true>;
+    clients: ClientsSelect<false> | ClientsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -86,6 +102,7 @@ export interface Config {
   db: {
     defaultIDType: string;
   };
+  fallbackLocale: null;
   globals: {};
   globalsSelect: {};
   locale: null;
@@ -117,10 +134,63 @@ export interface UserAuthOperations {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "appointments".
+ */
+export interface Appointment {
+  id: string;
+  visitorName: string;
+  company: string;
+  email: string;
+  phone: string;
+  purpose: string;
+  employeeToMeet: string | Employee;
+  /**
+   * Fallback if no employee relationship
+   */
+  employeeToMeetText?: string | null;
+  department: 'IT' | 'Sales' | 'Marketing' | 'Legal' | 'Executive' | 'HR' | 'Finance' | 'Operations';
+  scheduledTime: string;
+  duration: number;
+  status?: ('pending' | 'confirmed' | 'scheduled' | 'cancelled' | 'completed' | 'no-show') | null;
+  appointmentType?: ('meeting' | 'interview' | 'delivery' | 'maintenance' | 'other') | null;
+  notes?: string | null;
+  visitorArrived?: boolean | null;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  sendReminder?: boolean | null;
+  reminderSent?: boolean | null;
+  reminderSentAt?: string | null;
+  createdBy?: (string | null) | User;
+  updatedBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "employees".
+ */
+export interface Employee {
+  id: string;
+  name: string;
+  employeeId: string;
+  department?: ('it' | 'hr' | 'finance' | 'operations' | 'sales') | null;
+  email: string;
+  phone?: string | null;
+  isActive?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
   id: string;
+  name: string;
+  role: 'admin' | 'reception' | 'security' | 'employee';
+  department?: string | null;
+  phone?: string | null;
+  isActive?: boolean | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -145,7 +215,7 @@ export interface User {
  */
 export interface Media {
   id: string;
-  alt: string;
+  alt?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -157,6 +227,150 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+  sizes?: {
+    thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    card?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    tablet?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "visitors".
+ */
+export interface Visitor {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone: string;
+  company?: string | null;
+  purpose: string;
+  employeeToMeet?: (string | null) | Employee;
+  employeeToMeetName?: string | null;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  status?: ('checked-in' | 'checked-out' | 'expected') | null;
+  notes?: string | null;
+  badgeNumber?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "travel-logs".
+ */
+export interface TravelLog {
+  id: string;
+  employee: string | Employee;
+  destination: string;
+  purpose: string;
+  departureTime: string;
+  expectedReturn?: string | null;
+  actualReturn?: string | null;
+  status?: ('departed' | 'returned' | 'delayed') | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "parcel-logs".
+ */
+export interface ParcelLog {
+  id: string;
+  trackingNumber?: string | null;
+  sender: string;
+  senderType: 'supplier' | 'employee' | 'client' | 'other';
+  recipient: string | Employee;
+  description: string;
+  receivedAt?: string | null;
+  collectedAt?: string | null;
+  status?: ('received' | 'collected' | 'returned') | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "phone-calls".
+ */
+export interface PhoneCall {
+  id: string;
+  employee: string | Employee;
+  callerName?: string | null;
+  callerNumber: string;
+  purpose: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  duration?: number | null;
+  cost?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "vehicles".
+ */
+export interface Vehicle {
+  id: string;
+  registrationNumber: string;
+  vehicleType: 'company-car' | 'employee-personal' | 'visitor' | 'delivery';
+  ownerName: string;
+  ownerPhone?: string | null;
+  purpose?: string | null;
+  entryTime?: string | null;
+  exitTime?: string | null;
+  currentMileage?: number | null;
+  notes?: string | null;
+  securityGuard?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clients".
+ */
+export interface Client {
+  id: string;
+  companyName: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  industry?: ('technology' | 'finance' | 'healthcare' | 'retail' | 'manufacturing' | 'other') | null;
+  clientSince?: string | null;
+  status?: ('active' | 'inactive' | 'prospect') | null;
+  notes?: string | null;
+  documents?:
+    | {
+        document?: (string | null) | Media;
+        description?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  assignedEmployee?: (string | null) | Employee;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -183,12 +397,44 @@ export interface PayloadLockedDocument {
   id: string;
   document?:
     | ({
+        relationTo: 'appointments';
+        value: string | Appointment;
+      } | null)
+    | ({
         relationTo: 'users';
         value: string | User;
       } | null)
     | ({
         relationTo: 'media';
         value: string | Media;
+      } | null)
+    | ({
+        relationTo: 'visitors';
+        value: string | Visitor;
+      } | null)
+    | ({
+        relationTo: 'travel-logs';
+        value: string | TravelLog;
+      } | null)
+    | ({
+        relationTo: 'parcel-logs';
+        value: string | ParcelLog;
+      } | null)
+    | ({
+        relationTo: 'phone-calls';
+        value: string | PhoneCall;
+      } | null)
+    | ({
+        relationTo: 'vehicles';
+        value: string | Vehicle;
+      } | null)
+    | ({
+        relationTo: 'employees';
+        value: string | Employee;
+      } | null)
+    | ({
+        relationTo: 'clients';
+        value: string | Client;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -234,9 +480,43 @@ export interface PayloadMigration {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "appointments_select".
+ */
+export interface AppointmentsSelect<T extends boolean = true> {
+  visitorName?: T;
+  company?: T;
+  email?: T;
+  phone?: T;
+  purpose?: T;
+  employeeToMeet?: T;
+  employeeToMeetText?: T;
+  department?: T;
+  scheduledTime?: T;
+  duration?: T;
+  status?: T;
+  appointmentType?: T;
+  notes?: T;
+  visitorArrived?: T;
+  checkInTime?: T;
+  checkOutTime?: T;
+  sendReminder?: T;
+  reminderSent?: T;
+  reminderSentAt?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  name?: T;
+  role?: T;
+  department?: T;
+  phone?: T;
+  isActive?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -271,6 +551,166 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        card?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        tablet?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "visitors_select".
+ */
+export interface VisitorsSelect<T extends boolean = true> {
+  name?: T;
+  email?: T;
+  phone?: T;
+  company?: T;
+  purpose?: T;
+  employeeToMeet?: T;
+  employeeToMeetName?: T;
+  checkInTime?: T;
+  checkOutTime?: T;
+  status?: T;
+  notes?: T;
+  badgeNumber?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "travel-logs_select".
+ */
+export interface TravelLogsSelect<T extends boolean = true> {
+  employee?: T;
+  destination?: T;
+  purpose?: T;
+  departureTime?: T;
+  expectedReturn?: T;
+  actualReturn?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "parcel-logs_select".
+ */
+export interface ParcelLogsSelect<T extends boolean = true> {
+  trackingNumber?: T;
+  sender?: T;
+  senderType?: T;
+  recipient?: T;
+  description?: T;
+  receivedAt?: T;
+  collectedAt?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "phone-calls_select".
+ */
+export interface PhoneCallsSelect<T extends boolean = true> {
+  employee?: T;
+  callerName?: T;
+  callerNumber?: T;
+  purpose?: T;
+  startTime?: T;
+  endTime?: T;
+  duration?: T;
+  cost?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "vehicles_select".
+ */
+export interface VehiclesSelect<T extends boolean = true> {
+  registrationNumber?: T;
+  vehicleType?: T;
+  ownerName?: T;
+  ownerPhone?: T;
+  purpose?: T;
+  entryTime?: T;
+  exitTime?: T;
+  currentMileage?: T;
+  notes?: T;
+  securityGuard?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "employees_select".
+ */
+export interface EmployeesSelect<T extends boolean = true> {
+  name?: T;
+  employeeId?: T;
+  department?: T;
+  email?: T;
+  phone?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clients_select".
+ */
+export interface ClientsSelect<T extends boolean = true> {
+  companyName?: T;
+  contactPerson?: T;
+  email?: T;
+  phone?: T;
+  address?: T;
+  city?: T;
+  country?: T;
+  industry?: T;
+  clientSince?: T;
+  status?: T;
+  notes?: T;
+  documents?:
+    | T
+    | {
+        document?: T;
+        description?: T;
+        id?: T;
+      };
+  assignedEmployee?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
