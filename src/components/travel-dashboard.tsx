@@ -6,7 +6,6 @@ import {
   Plus,
   Plane,
   Car,
-  Hotel,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -14,12 +13,9 @@ import {
   Filter,
   Download,
   Eye,
-  Edit,
   Trash2,
   RefreshCw,
   MapPin,
-  Calendar,
-  Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -43,6 +39,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import TravelLogForm from './travel-form'
+import Link from 'next/link'
 
 // Define TravelLog interface
 interface TravelLog {
@@ -390,18 +387,11 @@ export default function TravelPage() {
         </TableCell>
         <TableCell className="text-right">
           <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              title="View Details"
-              onClick={() => {
-                alert(
-                  `Travel Log Details:\n\nEmployee: ${typeof log.employee === 'object' ? log.employee.name : log.employee}\nDestination: ${log.destination}\nPurpose: ${log.purpose}\nStatus: ${log.status}\nDeparture: ${new Date(log.departureTime).toLocaleString()}\nExpected Return: ${log.expectedReturn ? new Date(log.expectedReturn).toLocaleString() : 'Not specified'}\nActual Return: ${log.actualReturn ? new Date(log.actualReturn).toLocaleString() : 'Not returned'}\nTravel Type: ${log.travelType || 'N/A'}\nTransportation: ${log.transportation || 'N/A'}\nAccommodation: ${log.accommodation || 'N/A'}\nEstimated Cost: ${log.estimatedCost ? '$' + log.estimatedCost.toLocaleString() : 'N/A'}${log.notes ? `\n\nNotes: ${log.notes}` : ''}`,
-                )
-              }}
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
+            <Link href={`/dashboard/travel/${log.id}`}>
+              <Button variant="ghost" size="icon" title="View Logs">
+                <Eye className="h-4 w-4" />
+              </Button>
+            </Link>
 
             {log.status === 'pending' && (
               <Button

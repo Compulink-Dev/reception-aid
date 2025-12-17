@@ -37,13 +37,15 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import CallCheckin from '@/components/call-checkin'
+import Link from 'next/link'
+import { toast } from 'sonner'
 
 // Define PhoneCall interface based on your Payload CMS schema
 interface PhoneCall {
-  _id: string
+  id: string
   employee:
     | {
-        _id: string
+        id: string
         name: string
         department?: string
         email: string
@@ -100,9 +102,11 @@ export default function CallsPage() {
         setCalls(result.data)
       } else {
         console.error('Failed to fetch calls:', result)
+        toast.error('Failed to load calls')
       }
     } catch (error) {
       console.error('Error fetching calls:', error)
+      toast.error('Error loading calls')
     } finally {
       setRefreshing(false)
     }
@@ -129,16 +133,16 @@ export default function CallsPage() {
         })
 
         if (response.ok) {
-          // Refresh the call list
+          toast.success('Call deleted successfully')
           fetchCalls(searchTerm)
         } else {
           const error = await response.json()
           console.error('Failed to delete call:', error)
-          alert(`Failed to delete call: ${error.message || 'Unknown error'}`)
+          toast.error(`Failed to delete call: ${error.message || 'Unknown error'}`)
         }
       } catch (error) {
         console.error('Error deleting call:', error)
-        alert('Error deleting call. Please try again.')
+        toast.error('Error deleting call. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -149,10 +153,12 @@ export default function CallsPage() {
     // Refresh the call list to include the new one
     fetchCalls(searchTerm)
     setIsAddDialogOpen(false)
+    toast.success('Call logged successfully')
   }
 
   const refreshData = () => {
     fetchCalls(searchTerm)
+    toast.info('Refreshing calls...')
   }
 
   // Helper function to get employee name
@@ -216,7 +222,7 @@ export default function CallsPage() {
     }
 
     return calls.map((call) => (
-      <TableRow key={call._id}>
+      <TableRow key={call.id}>
         <TableCell>
           <div>
             <p className="font-medium">{getEmployeeName(call.employee)}</p>
@@ -248,22 +254,15 @@ export default function CallsPage() {
         <TableCell className="font-medium">${(call.cost || 0).toFixed(2)}</TableCell>
         <TableCell className="text-right">
           <div className="flex justify-end gap-2">
+            <Link href={`/dashboard/calls/${call.id}`}>
+              <Button variant="ghost" size="icon" title="View Details">
+                <Eye className="h-4 w-4" />
+              </Button>
+            </Link>
             <Button
               variant="ghost"
               size="icon"
-              title="View Details"
-              onClick={() => {
-                alert(
-                  `Call Details:\n\nEmployee: ${getEmployeeName(call.employee)}\nCaller: ${call.callerName || 'Unknown'}\nNumber: ${call.callerNumber}\nPurpose: ${call.purpose}\nStart: ${new Date(call.startTime).toLocaleString()}\nEnd: ${call.endTime ? new Date(call.endTime).toLocaleString() : 'N/A'}\nDuration: ${call.duration || 0} minutes\nCost: $${(call.cost || 0).toFixed(2)}`,
-                )
-              }}
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleDelete(call._id)}
+              onClick={() => handleDelete(call.id)}
               disabled={loading}
               title="Delete"
             >
