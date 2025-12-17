@@ -11,7 +11,7 @@ interface Activity {
   timestamp: Date
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const payload = await getPayload({ config })
     const activities: Activity[] = []
@@ -81,23 +81,27 @@ export async function GET(request: NextRequest) {
       collection: 'parcel-logs',
       limit: 10,
       sort: '-receivedAt',
+      depth: 1,
     })
 
     recentParcels.docs.forEach((parcel) => {
       const collectedAt = parcel.collectedAt ? new Date(parcel.collectedAt) : null
       const receivedAt = parcel.receivedAt ? new Date(parcel.receivedAt) : null
 
+      // Use 'from' field instead of 'sender'
+      const from = parcel.from || 'Unknown sender'
+
       if (collectedAt) {
         activities.push({
           time: format(collectedAt, 'hh:mm a'),
-          activity: `Parcel collected from ${parcel.sender}`,
+          activity: `Parcel collected from ${from}`,
           type: 'parcel',
           timestamp: collectedAt,
         })
       } else if (receivedAt) {
         activities.push({
           time: format(receivedAt, 'hh:mm a'),
-          activity: `Parcel received from ${parcel.sender}`,
+          activity: `Parcel received from ${from}`,
           type: 'parcel',
           timestamp: receivedAt,
         })

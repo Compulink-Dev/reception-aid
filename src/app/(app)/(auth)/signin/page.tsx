@@ -33,9 +33,9 @@ export default function Signin() {
           if (response.ok) {
             // Redirect based on role
             if (user.role === 'security') {
-              router.push('/security')
+              router.push('/dashboard')
             } else if (user.role === 'reception') {
-              router.push('/reception')
+              router.push('/dashboard')
             } else {
               router.push('/dashboard')
             }
@@ -76,9 +76,9 @@ export default function Signin() {
 
         // Redirect based on role
         if (data.user.role === 'security') {
-          router.push('/security')
+          router.push('/dashbaord')
         } else if (data.user.role === 'reception') {
-          router.push('/reception')
+          router.push('/dashboard')
         } else {
           router.push('/dashboard')
         }

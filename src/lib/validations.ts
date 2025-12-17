@@ -34,12 +34,21 @@ export const travelLogSchema = z.object({
   notes: z.string().optional(),
 })
 
+// lib/validations.ts
 export const parcelSchema = z.object({
   trackingNumber: z.string().optional(),
-  sender: z.string().min(2, 'Sender name is required'),
-  senderType: z.enum(['supplier', 'employee', 'client', 'other']),
-  recipient: z.string().min(1, 'Recipient is required'),
-  description: z.string().min(10, 'Please provide a detailed description'),
+  deliveryNoteNumber: z.string().optional(),
+  serialNumbers: z
+    .array(
+      z.object({
+        serialNumber: z.string().min(1, 'Serial number is required'),
+      }),
+    )
+    .optional(),
+  from: z.string().min(1, 'Sender is required'),
+  senderType: z.enum(['incoming', 'outgoing', 'other']),
+  to: z.string().min(1, 'Recipient is required'),
+  description: z.string().min(1, 'Description is required'),
   weight: z.string().optional(),
   dimensions: z.string().optional(),
   deliveryService: z.string().optional(),
