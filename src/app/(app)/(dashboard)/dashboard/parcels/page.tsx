@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dialog'
 import ParcelChecking from '@/components/parcel-checkin'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 // Update the Parcel interface
 interface Parcel {
@@ -321,23 +322,11 @@ export default function ParcelsPage() {
         </TableCell>
         <TableCell className="text-right">
           <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              title="View Details"
-              onClick={() => {
-                const serialNumbersText =
-                  parcel.serialNumbers && parcel.serialNumbers.length > 0
-                    ? `\nSerial Numbers:\n${parcel.serialNumbers.map((sn) => `  • ${sn.serialNumber}`).join('\n')}`
-                    : ''
-
-                alert(
-                  `Parcel Details:\n\nTracking: ${parcel.trackingNumber || 'N/A'}\nDelivery Note: ${parcel.deliveryNoteNumber || 'N/A'}${serialNumbersText}\nFrom: ${parcel.from}\nType: ${parcel.senderType}\nTo: ${typeof parcel.to === 'object' ? parcel.to.name : parcel.to}\nDescription: ${parcel.description}\nStatus: ${parcel.status}\nReceived: ${new Date(parcel.receivedAt).toLocaleString()}\nCollected: ${parcel.collectedAt ? new Date(parcel.collectedAt).toLocaleString() : 'Not collected'}\nWeight: ${parcel.weight || 'N/A'}\nDimensions: ${parcel.dimensions || 'N/A'}\nDelivery: ${parcel.deliveryService || 'N/A'}${parcel.notes ? `\n\nNotes: ${parcel.notes}` : ''}`,
-                )
-              }}
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
+            <Link href={`/dashboard/parcels/${parcel.id}`}>
+              <Button variant="ghost" size="icon" title="View Details">
+                <Eye className="h-4 w-4" />
+              </Button>
+            </Link>
             {parcel.status === 'received' && (
               <Button
                 variant="ghost"
