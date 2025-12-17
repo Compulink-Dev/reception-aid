@@ -39,13 +39,15 @@ import {
 import ParcelChecking from '@/components/parcel-checkin'
 import { toast } from 'sonner'
 
-// Define Parcel interface based on your MongoDB schema
+// Update the Parcel interface
 interface Parcel {
   id: string
   trackingNumber?: string
-  sender: string
-  senderType: 'supplier' | 'employee' | 'client' | 'other'
-  recipient: string | { id: string; name: string; email: string } // Can be populated or just ID
+  deliveryNoteNumber?: string
+  serialNumbers?: Array<{ id: string; serialNumber: string }>
+  from: string
+  senderType: 'incoming' | 'outgoing' | 'other'
+  to: string | { id: string; name: string; email: string } // Can be populated or just ID
   description: string
   receivedAt: string
   collectedAt: string | null
@@ -206,18 +208,23 @@ export default function ParcelsPage() {
     }
   }
 
+  // Update the getSenderTypeBadge function
   const getSenderTypeBadge = (type: string) => {
     const colors = {
-      supplier: 'bg-blue-100 text-blue-800',
-      employee: 'bg-purple-100 text-purple-800',
-      client: 'bg-green-100 text-green-800',
+      incoming: 'bg-blue-100 text-blue-800',
+      outgoing: 'bg-purple-100 text-purple-800',
       other: 'bg-gray-100 text-gray-800',
+    }
+    const labels = {
+      incoming: 'Incoming',
+      outgoing: 'Outgoing',
+      other: 'Other',
     }
     return (
       <Badge
         className={`${colors[type as keyof typeof colors] || 'bg-gray-100'} hover:bg-opacity-80`}
       >
-        {type.charAt(0).toUpperCase() + type.slice(1)}
+        {labels[type as keyof typeof labels] || type}
       </Badge>
     )
   }
@@ -268,21 +275,28 @@ export default function ParcelsPage() {
       <TableRow key={parcel.id}>
         <TableCell>
           <div className="font-medium">{parcel.trackingNumber || 'No Tracking #'}</div>
-          <div className="text-xs text-muted-foreground">{parcel.deliveryService || 'N/A'}</div>
+          <div className="text-xs text-muted-foreground">
+            {parcel.deliveryNoteNumber || 'No DN#'}
+          </div>
         </TableCell>
         <TableCell>
           <div>
-            <p className="font-medium">{parcel.sender}</p>
+            <p className="font-medium">{parcel.from}</p>
             <div className="mt-1">{getSenderTypeBadge(parcel.senderType)}</div>
           </div>
         </TableCell>
         <TableCell>
           <p className="font-medium">
-            {typeof parcel.recipient === 'object' ? parcel.recipient.name : parcel.recipient}
+            {typeof parcel.to === 'object' ? parcel.to.name : parcel.to}
           </p>
         </TableCell>
         <TableCell className="max-w-xs">
           <p className="truncate">{parcel.description}</p>
+          {parcel.serialNumbers && parcel.serialNumbers.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Serial: {parcel.serialNumbers.map((sn) => sn.serialNumber).join(', ')}
+            </p>
+          )}
           {parcel.notes && (
             <p className="text-xs text-muted-foreground mt-1 truncate">Note: {parcel.notes}</p>
           )}
@@ -312,9 +326,13 @@ export default function ParcelsPage() {
               size="icon"
               title="View Details"
               onClick={() => {
-                // Implement view details modal
+                const serialNumbersText =
+                  parcel.serialNumbers && parcel.serialNumbers.length > 0
+                    ? `\nSerial Numbers:\n${parcel.serialNumbers.map((sn) => `  • ${sn.serialNumber}`).join('\n')}`
+                    : ''
+
                 alert(
-                  `Parcel Details:\n\nTracking: ${parcel.trackingNumber || 'N/A'}\nSender: ${parcel.sender}\nRecipient: ${parcel.recipient}\nDescription: ${parcel.description}\nStatus: ${parcel.status}\nReceived: ${new Date(parcel.receivedAt).toLocaleString()}\nCollected: ${parcel.collectedAt ? new Date(parcel.collectedAt).toLocaleString() : 'Not collected'}\nWeight: ${parcel.weight || 'N/A'}\nDimensions: ${parcel.dimensions || 'N/A'}\nDelivery: ${parcel.deliveryService || 'N/A'}${parcel.notes ? `\n\nNotes: ${parcel.notes}` : ''}`,
+                  `Parcel Details:\n\nTracking: ${parcel.trackingNumber || 'N/A'}\nDelivery Note: ${parcel.deliveryNoteNumber || 'N/A'}${serialNumbersText}\nFrom: ${parcel.from}\nType: ${parcel.senderType}\nTo: ${typeof parcel.to === 'object' ? parcel.to.name : parcel.to}\nDescription: ${parcel.description}\nStatus: ${parcel.status}\nReceived: ${new Date(parcel.receivedAt).toLocaleString()}\nCollected: ${parcel.collectedAt ? new Date(parcel.collectedAt).toLocaleString() : 'Not collected'}\nWeight: ${parcel.weight || 'N/A'}\nDimensions: ${parcel.dimensions || 'N/A'}\nDelivery: ${parcel.deliveryService || 'N/A'}${parcel.notes ? `\n\nNotes: ${parcel.notes}` : ''}`,
                 )
               }}
             >
@@ -467,9 +485,9 @@ export default function ParcelsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tracking #</TableHead>
-                  <TableHead>Sender</TableHead>
-                  <TableHead>Recipient</TableHead>
+                  <TableHead>Tracking/DN #</TableHead>
+                  <TableHead>From</TableHead>
+                  <TableHead>To (Recipient)</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Received</TableHead>
                   <TableHead>Status</TableHead>

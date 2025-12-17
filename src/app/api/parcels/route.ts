@@ -24,9 +24,10 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       where.or = [
-        { sender: { contains: search } },
+        { from: { contains: search } }, // Changed from 'sender' to 'from'
         { description: { contains: search } },
         { trackingNumber: { contains: search } },
+        { deliveryNoteNumber: { contains: search } }, // Added delivery note number
       ]
     }
 
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const payload = await getPayload({ config })
-    
+
     // Parse and validate JSON body
     let body
     try {
@@ -96,13 +97,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate required fields
-    if (!body.sender || !body.senderType || !body.recipient || !body.description) {
+    // Validate required fields - UPDATED FIELD NAMES
+    if (!body.from || !body.senderType || !body.to || !body.description) {
       return NextResponse.json(
         {
           success: false,
           error: 'Missing required fields',
-          details: 'sender, senderType, recipient, and description are required',
+          details: 'from, senderType, to, and description are required',
         },
         { status: 400 },
       )
@@ -110,7 +111,8 @@ export async function POST(request: NextRequest) {
 
     // Validate recipient is a valid ObjectID (24 character hex string)
     const objectIdRegex = /^[0-9a-fA-F]{24}$/
-    if (!objectIdRegex.test(body.recipient)) {
+    if (!objectIdRegex.test(body.to)) {
+      // Changed from 'recipient' to 'to'
       return NextResponse.json(
         {
           success: false,

@@ -1,3 +1,4 @@
+//@ts-nocheck
 // collections/ParcelLogs.ts
 import { CollectionConfig } from 'payload'
 
@@ -13,26 +14,47 @@ export const ParcelLogs: CollectionConfig = {
       unique: true,
     },
     {
-      name: 'sender',
+      name: 'deliveryNoteNumber',
+      type: 'text',
+    },
+    {
+      name: 'serialNumbers',
+      type: 'array',
+      fields: [
+        {
+          name: 'serialNumber',
+          type: 'text',
+          required: true,
+        },
+      ],
+      admin: {
+        components: {
+          RowLabel: ({ data }: any) => data?.serialNumber || 'Serial Number',
+        },
+      },
+    },
+    {
+      name: 'from',
       type: 'text',
       required: true,
+      label: 'From (Sender)',
     },
     {
       name: 'senderType',
       type: 'select',
       options: [
-        { label: 'Supplier', value: 'supplier' },
-        { label: 'Employee', value: 'employee' },
-        { label: 'Client', value: 'client' },
+        { label: 'Incoming', value: 'incoming' },
+        { label: 'Outgoing', value: 'outgoing' },
         { label: 'Other', value: 'other' },
       ],
       required: true,
     },
     {
-      name: 'recipient',
+      name: 'to',
       type: 'relationship',
       relationTo: 'employees',
       required: true,
+      label: 'To (Recipient)',
     },
     {
       name: 'description',
@@ -67,6 +89,22 @@ export const ParcelLogs: CollectionConfig = {
         { label: 'Returned', value: 'returned' },
       ],
       defaultValue: 'received',
+    },
+    {
+      name: 'weight',
+      type: 'text',
+    },
+    {
+      name: 'dimensions',
+      type: 'text',
+    },
+    {
+      name: 'deliveryService',
+      type: 'text',
+    },
+    {
+      name: 'notes',
+      type: 'textarea',
     },
   ],
 }

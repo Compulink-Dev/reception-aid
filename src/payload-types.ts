@@ -303,13 +303,24 @@ export interface TravelLog {
 export interface ParcelLog {
   id: string;
   trackingNumber?: string | null;
-  sender: string;
-  senderType: 'supplier' | 'employee' | 'client' | 'other';
-  recipient: string | Employee;
+  deliveryNoteNumber?: string | null;
+  serialNumbers?:
+    | {
+        serialNumber: string;
+        id?: string | null;
+      }[]
+    | null;
+  from: string;
+  senderType: 'incoming' | 'outgoing' | 'other';
+  to: string | Employee;
   description: string;
   receivedAt?: string | null;
   collectedAt?: string | null;
   status?: ('received' | 'collected' | 'returned') | null;
+  weight?: string | null;
+  dimensions?: string | null;
+  deliveryService?: string | null;
+  notes?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -637,13 +648,24 @@ export interface TravelLogsSelect<T extends boolean = true> {
  */
 export interface ParcelLogsSelect<T extends boolean = true> {
   trackingNumber?: T;
-  sender?: T;
+  deliveryNoteNumber?: T;
+  serialNumbers?:
+    | T
+    | {
+        serialNumber?: T;
+        id?: T;
+      };
+  from?: T;
   senderType?: T;
-  recipient?: T;
+  to?: T;
   description?: T;
   receivedAt?: T;
   collectedAt?: T;
   status?: T;
+  weight?: T;
+  dimensions?: T;
+  deliveryService?: T;
+  notes?: T;
   updatedAt?: T;
   createdAt?: T;
 }
