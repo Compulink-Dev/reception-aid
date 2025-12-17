@@ -54,9 +54,20 @@ export async function GET(request: NextRequest) {
       depth: 1,
     })
 
+    // Transform the data to match your frontend interface
+    const transformedData = result.docs.map((visitor: any) => ({
+      ...visitor,
+      _id: visitor.id, // Add _id field for compatibility with your frontend
+      // Ensure other fields are properly structured
+      checkInTime: visitor.checkInTime,
+      checkOutTime: visitor.checkOutTime || null,
+      createdAt: visitor.createdAt,
+      updatedAt: visitor.updatedAt,
+    }))
+
     return NextResponse.json({
       success: true,
-      data: result.docs,
+      data: transformedData, // Use transformed data
       pagination: {
         totalDocs: result.totalDocs,
         totalPages: result.totalPages,
@@ -92,7 +103,10 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!data.name || !data.phone || !data.purpose) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, phone, purpose are required' },
+        {
+          success: false, // Add success flag
+          error: 'Missing required fields: name, phone, purpose are required',
+        },
         { status: 400 },
       )
     }
@@ -168,7 +182,19 @@ export async function POST(request: NextRequest) {
       depth: 1,
     })
 
-    return NextResponse.json(updatedVisitor, { status: 201 })
+    // Transform the response to match your frontend interface
+    const transformedVisitor = {
+      ...updatedVisitor,
+      _id: updatedVisitor.id, // Add _id field for compatibility
+    }
+
+    return NextResponse.json(
+      {
+        success: true, // Add success flag
+        data: transformedVisitor,
+      },
+      { status: 201 },
+    )
   } catch (error) {
     console.error('❌ Error creating visitor:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
@@ -177,6 +203,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.message.includes('BSONError')) {
       return NextResponse.json(
         {
+          success: false, // Add success flag
           error: 'Database error',
           message: 'There was an issue with the database ID format',
           suggestion: 'Check if the employee ID is valid (24 character hex string)',
@@ -187,6 +214,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
+        success: false, // Add success flag
         error: 'Failed to create visitor',
         message: error instanceof Error ? error.message : String(error),
         details:

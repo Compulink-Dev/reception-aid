@@ -5,6 +5,9 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Building, Eye, EyeOff } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export default function Signin() {
   const router = useRouter()
@@ -94,17 +97,17 @@ export default function Signin() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 p-4">
-      <div className="max-w-md w-full space-y-8">
+      <div className="max-w-md w-full space-y-4">
         {/* Logo and Header */}
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-blue-600 p-3 rounded-full">
+        <div className="text-center sapce-y-4">
+          <div className="flex justify-center">
+            <div className="bg-blue-600 p-3 rounded-full mb-2">
               <Building className="h-10 w-10 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <p className="text-4xl font-bold text-gray-900">
             Reception<span className="text-blue-600">Aid</span>
-          </h1>
+          </p>
           <p className="text-gray-600">Sign in to access your dashboard</p>
         </div>
 
@@ -134,10 +137,10 @@ export default function Signin() {
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                <Label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
-                </label>
-                <input
+                </Label>
+                <Input
                   id="email"
                   name="email"
                   type="email"
@@ -151,11 +154,11 @@ export default function Signin() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                <Label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                   Password
-                </label>
+                </Label>
                 <div className="relative">
-                  <input
+                  <Input
                     id="password"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
@@ -166,28 +169,29 @@ export default function Signin() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition pr-12"
                     placeholder="Enter your password"
                   />
-                  <button
+                  <Button
+                    variant={'ghost'}
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <input
+                <Input
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <label htmlFor="remember-me" className="ml-2 text-sm text-gray-700">
+                <Label htmlFor="remember-me" className="ml-2 text-sm text-gray-700">
                   Remember me
-                </label>
+                </Label>
               </div>
 
               <div className="text-sm">
@@ -200,7 +204,7 @@ export default function Signin() {
               </div>
             </div>
 
-            <button
+            <Button
               type="submit"
               disabled={loading}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
@@ -228,27 +232,27 @@ export default function Signin() {
               ) : (
                 'Sign in'
               )}
-            </button>
+            </Button>
           </form>
 
           <div className="mt-8 pt-6 border-t border-gray-200">
             <p className="text-center text-sm text-gray-600">
               {` Don't have an account?`}
-              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/register" className="font-medium text-blue-600 ml-1 hover:text-blue-500">
                 Sign up here
               </Link>
             </p>
           </div>
 
           {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          {/* <div className="mt-6 p-4 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-800 font-medium mb-2">Demo Credentials:</p>
             <div className="space-y-1 text-sm text-blue-700">
               <p>Reception: reception@demo.com / password</p>
               <p>Security: security@demo.com / password</p>
               <p>Admin: admin@demo.com / password</p>
             </div>
-          </div>
+          </div> */}
         </div>
 
         <p className="text-center text-xs text-gray-500">

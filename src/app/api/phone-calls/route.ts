@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
         { callerName: { contains: search } },
         { callerNumber: { contains: search } },
         { purpose: { contains: search } },
+        { 'employee.name': { contains: search } },
       ]
     }
 
@@ -77,6 +78,8 @@ export async function POST(request: NextRequest) {
     const payload = await getPayload({ config })
     const body = await request.json()
 
+    console.log('Creating phone call with data:', body)
+
     // Validate required fields
     if (!body.employee || !body.callerNumber || !body.purpose) {
       return NextResponse.json(
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     // Validate employee is a valid ObjectID
     const objectIdRegex = /^[0-9a-fA-F]{24}$/
-    if (!objectIdRegex.test(body.employee)) {
+    if (typeof body.employee === 'string' && !objectIdRegex.test(body.employee)) {
       return NextResponse.json(
         {
           success: false,

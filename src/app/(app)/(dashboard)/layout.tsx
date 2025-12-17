@@ -110,17 +110,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (user?.role === 'reception' || user?.role === 'admin') {
       baseItems.push(
         {
-          title: 'Visitors',
-          href: '/dashboard/visitors',
-          icon: <Users className="h-5 w-5" />,
-          active: pathname.startsWith('/dashboard/visitors'),
-          submenu: [
-            // { title: 'Check-in Visitors', href: '/dashboard/visitors' },
-            { title: 'Visitor Logs', href: '/dashboard/visitors/logs' },
-            { title: 'Appointments', href: '/dashboard/visitors/appointments' },
-          ],
-        },
-        {
           title: 'Parcels',
           href: '/dashboard/parcels',
           icon: <Package className="h-5 w-5" />,
@@ -129,6 +118,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             // { title: 'Log Parcel', href: '/dashboard/parcels/' },
             { title: 'Delivery Logs', href: '/dashboard/parcels/deliveries' },
             { title: 'Parcel Tracking', href: '/dashboard/parcels/tracking' },
+          ],
+        },
+        {
+          title: 'Visitors',
+          href: '/dashboard/visitors',
+          icon: <Users className="h-5 w-5" />,
+          active: pathname.startsWith('/dashboard/visitors'),
+          submenu: [
+            // { title: 'Check-in Visitors', href: '/dashboard/visitors' },
+            { title: 'Visitor Logs', href: '/dashboard/visitors/logs' },
+            { title: 'Appointments', href: '/dashboard/visitors/appointments' },
           ],
         },
         {
