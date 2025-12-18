@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
-// GET - List all parcels
+// app/api/parcels/route.ts - Update the GET function
 export async function GET(request: NextRequest) {
   try {
     const payload = await getPayload({ config })
@@ -24,10 +24,11 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       where.or = [
-        { from: { contains: search } }, // Changed from 'sender' to 'from'
-        { description: { contains: search } },
-        { trackingNumber: { contains: search } },
-        { deliveryNoteNumber: { contains: search } }, // Added delivery note number
+        { from: { contains: search } },
+        { to: { contains: search } },
+        { notes: { contains: search } },
+        // Note: Cannot directly query nested array fields in Payload
+        // We'll filter results client-side or use a different approach
       ]
     }
 
@@ -52,12 +53,48 @@ export async function GET(request: NextRequest) {
       depth: 1,
     })
 
+    // If there's a search term, we need to filter results to include item descriptions
+    let filteredDocs = result.docs
+    if (search) {
+      filteredDocs = result.docs.filter((parcel: any) => {
+        // Check basic fields
+        if (
+          parcel.from?.toLowerCase().includes(search.toLowerCase()) ||
+          parcel.to?.toLowerCase().includes(search.toLowerCase()) ||
+          parcel.notes?.toLowerCase().includes(search.toLowerCase())
+        ) {
+          return true
+        }
+
+        // Check items and their serial numbers
+        if (parcel.items && Array.isArray(parcel.items)) {
+          for (const item of parcel.items) {
+            // Check item description
+            if (item.description?.toLowerCase().includes(search.toLowerCase())) {
+              return true
+            }
+
+            // Check serial numbers
+            if (item.serialNumbers && Array.isArray(item.serialNumbers)) {
+              for (const serial of item.serialNumbers) {
+                if (serial.serialNumber?.toLowerCase().includes(search.toLowerCase())) {
+                  return true
+                }
+              }
+            }
+          }
+        }
+
+        return false
+      })
+    }
+
     return NextResponse.json({
       success: true,
-      data: result.docs,
+      data: filteredDocs,
       pagination: {
-        totalDocs: result.totalDocs,
-        totalPages: result.totalPages,
+        totalDocs: search ? filteredDocs.length : result.totalDocs,
+        totalPages: search ? Math.ceil(filteredDocs.length / limit) : result.totalPages,
         page: result.page,
         limit: result.limit,
         hasNextPage: result.hasNextPage,
@@ -77,47 +114,19 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create new parcel
+// app/api/parcels/route.ts - Update POST handler
 export async function POST(request: NextRequest) {
   try {
     const payload = await getPayload({ config })
+    const body = await request.json()
 
-    // Parse and validate JSON body
-    let body
-    try {
-      body = await request.json()
-    } catch (jsonError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid request body',
-          details: 'Request body must be valid JSON',
-        },
-        { status: 400 },
-      )
-    }
-
-    // Validate required fields - UPDATED FIELD NAMES
-    if (!body.from || !body.senderType || !body.to || !body.description) {
+    // Validate required fields
+    if (!body.from || !body.senderType || !body.to) {
       return NextResponse.json(
         {
           success: false,
           error: 'Missing required fields',
-          details: 'from, senderType, to, and description are required',
-        },
-        { status: 400 },
-      )
-    }
-
-    // Validate recipient is a valid ObjectID (24 character hex string)
-    const objectIdRegex = /^[0-9a-fA-F]{24}$/
-    if (!objectIdRegex.test(body.to)) {
-      // Changed from 'recipient' to 'to'
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid recipient ID',
-          details: 'Recipient must be a valid employee ID (24 character hex string)',
+          details: 'from, senderType, and to are required',
         },
         { status: 400 },
       )
@@ -125,7 +134,10 @@ export async function POST(request: NextRequest) {
 
     const parcel = await payload.create({
       collection: 'parcel-logs',
-      data: body,
+      data: {
+        ...body,
+        items: body.items || [],
+      },
     })
 
     return NextResponse.json({
@@ -135,20 +147,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error creating parcel:', error)
-
-    // Handle specific MongoDB/BSON errors
-    if (error instanceof Error && error.message.includes('BSONError')) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid ID format',
-          details:
-            'One or more relationship fields contain invalid IDs. Please ensure all IDs are valid 24-character hex strings.',
-        },
-        { status: 400 },
-      )
-    }
-
     return NextResponse.json(
       {
         success: false,

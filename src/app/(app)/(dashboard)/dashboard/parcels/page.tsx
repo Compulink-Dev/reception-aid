@@ -36,26 +36,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import ParcelChecking from '@/components/parcel-checkin'
+import ParcelCheckin from '@/components/parcel-checkin'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
 // Update the Parcel interface
 interface Parcel {
   id: string
-  trackingNumber?: string
-  deliveryNoteNumber?: string
-  serialNumbers?: Array<{ id: string; serialNumber: string }>
+  serialNumbers?: Array<{ id: string; serialNumber: string; description: string }>
   from: string
   senderType: 'incoming' | 'outgoing' | 'other'
-  to: string | { id: string; name: string; email: string } // Can be populated or just ID
-  description: string
+  to: string // Changed to string
   receivedAt: string
   collectedAt: string | null
   status: 'received' | 'collected' | 'returned'
   weight?: string
   dimensions?: string
-  deliveryService?: string
   notes?: string
   createdAt?: string
   updatedAt?: string
@@ -82,6 +78,9 @@ export default function ParcelsPage() {
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
+  // Check if user is admin (you'll need to implement your own auth logic)
+  const isAdmin = true // Replace with actual admin check
+
   // Fetch parcels on component mount
   useEffect(() => {
     fetchParcels()
@@ -102,9 +101,11 @@ export default function ParcelsPage() {
         setParcels(result.data)
       } else {
         console.error('Failed to fetch parcels:', result)
+        toast.error('Failed to load parcels')
       }
     } catch (error) {
       console.error('Error fetching parcels:', error)
+      toast.error('Error loading parcels')
     } finally {
       setRefreshing(false)
     }
@@ -151,17 +152,22 @@ export default function ParcelsPage() {
       } else {
         const error = await response.json()
         console.error('Failed to update parcel:', error)
-        toast(`Failed to mark as collected: ${error.message || 'Unknown error'}`)
+        toast.error(`Failed to mark as collected: ${error.message || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error updating parcel:', error)
-      toast('Error updating parcel. Please try again.')
+      toast.error('Error updating parcel. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   const handleDelete = async (parcelId: string) => {
+    if (!isAdmin) {
+      toast.error('Only administrators can delete parcels')
+      return
+    }
+
     if (window.confirm('Are you sure you want to delete this parcel record?')) {
       try {
         setLoading(true)
@@ -172,6 +178,7 @@ export default function ParcelsPage() {
         if (response.ok) {
           // Refresh the parcel list
           fetchParcels(searchTerm)
+          toast.success('Parcel deleted successfully')
         } else {
           const error = await response.json()
           console.error('Failed to delete parcel:', error)
@@ -186,7 +193,7 @@ export default function ParcelsPage() {
     }
   }
 
-  const handleAddParcel = (newParcel: any) => {
+  const handleAddParcel = () => {
     // Refresh the parcel list to include the new one
     fetchParcels(searchTerm)
     setIsAddDialogOpen(false)
@@ -209,7 +216,6 @@ export default function ParcelsPage() {
     }
   }
 
-  // Update the getSenderTypeBadge function
   const getSenderTypeBadge = (type: string) => {
     const colors = {
       incoming: 'bg-blue-100 text-blue-800',
@@ -252,7 +258,7 @@ export default function ParcelsPage() {
     if (refreshing) {
       return (
         <TableRow key="loading">
-          <TableCell colSpan={7} className="text-center py-8">
+          <TableCell colSpan={6} className="text-center py-8">
             <div className="flex items-center justify-center gap-2">
               <RefreshCw className="h-4 w-4 animate-spin" />
               <span className="text-muted-foreground">Loading parcels...</span>
@@ -265,7 +271,7 @@ export default function ParcelsPage() {
     if (parcels.length === 0) {
       return (
         <TableRow key="empty">
-          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
             {searchTerm ? 'No parcels found. Try adjusting your search.' : 'No parcels found.'}
           </TableCell>
         </TableRow>
@@ -275,31 +281,29 @@ export default function ParcelsPage() {
     return parcels.map((parcel) => (
       <TableRow key={parcel.id}>
         <TableCell>
-          <div className="font-medium">{parcel.trackingNumber || 'No Tracking #'}</div>
-          <div className="text-xs text-muted-foreground">
-            {parcel.deliveryNoteNumber || 'No DN#'}
-          </div>
-        </TableCell>
-        <TableCell>
           <div>
             <p className="font-medium">{parcel.from}</p>
             <div className="mt-1">{getSenderTypeBadge(parcel.senderType)}</div>
           </div>
         </TableCell>
         <TableCell>
-          <p className="font-medium">
-            {typeof parcel.to === 'object' ? parcel.to.name : parcel.to}
-          </p>
+          <p className="font-medium">{parcel.to}</p>
         </TableCell>
         <TableCell className="max-w-xs">
-          <p className="truncate">{parcel.description}</p>
-          {parcel.serialNumbers && parcel.serialNumbers.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Serial: {parcel.serialNumbers.map((sn) => sn.serialNumber).join(', ')}
-            </p>
+          {parcel.serialNumbers && parcel.serialNumbers.length > 0 ? (
+            <div className="space-y-1">
+              {parcel.serialNumbers.map((item, index) => (
+                <div key={index} className="text-sm">
+                  <span className="font-medium">{item.description}:</span>
+                  <span className="text-muted-foreground ml-2">{item.serialNumber}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No items recorded</p>
           )}
           {parcel.notes && (
-            <p className="text-xs text-muted-foreground mt-1 truncate">Note: {parcel.notes}</p>
+            <p className="text-xs text-muted-foreground mt-2">Note: {parcel.notes}</p>
           )}
           <div className="text-xs text-muted-foreground mt-1">
             {parcel.weight && <span>{parcel.weight} • </span>}
@@ -338,15 +342,17 @@ export default function ParcelsPage() {
                 <Edit className="h-4 w-4" />
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleDelete(parcel.id)}
-              disabled={loading}
-              title="Delete"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(parcel.id)}
+                disabled={loading}
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </TableCell>
       </TableRow>
@@ -389,7 +395,7 @@ export default function ParcelsPage() {
                   Enter parcel details to log it into the system.
                 </DialogDescription>
               </DialogHeader>
-              <ParcelChecking onSubmitSuccess={handleAddParcel} />
+              <ParcelCheckin onSubmitSuccess={handleAddParcel} />
             </DialogContent>
           </Dialog>
         </div>
@@ -474,10 +480,9 @@ export default function ParcelsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tracking/DN #</TableHead>
                   <TableHead>From</TableHead>
                   <TableHead>To (Recipient)</TableHead>
-                  <TableHead>Description</TableHead>
+                  <TableHead>Items</TableHead>
                   <TableHead>Received</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>

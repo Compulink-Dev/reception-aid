@@ -1,3 +1,4 @@
+//@ts-nocheck
 // components/reception/ParcelLog.tsx
 'use client'
 

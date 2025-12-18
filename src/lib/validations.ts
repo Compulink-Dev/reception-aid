@@ -34,26 +34,28 @@ export const travelLogSchema = z.object({
   notes: z.string().optional(),
 })
 
-// lib/validations.ts
+export const serialNumberSchema = z.object({
+  serialNumber: z.string().min(1, 'Serial number is required'),
+})
+
+export const itemSchema = z.object({
+  description: z.string().min(1, 'Item description is required'),
+  serialNumbers: z.array(serialNumberSchema).min(1, 'At least one serial number is required'),
+})
+
 export const parcelSchema = z.object({
-  trackingNumber: z.string().optional(),
-  deliveryNoteNumber: z.string().optional(),
-  serialNumbers: z
-    .array(
-      z.object({
-        serialNumber: z.string().min(1, 'Serial number is required'),
-      }),
-    )
-    .optional(),
   from: z.string().min(1, 'Sender is required'),
   senderType: z.enum(['incoming', 'outgoing', 'other']),
   to: z.string().min(1, 'Recipient is required'),
-  description: z.string().min(1, 'Description is required'),
+  items: z.array(itemSchema).optional(),
   weight: z.string().optional(),
   dimensions: z.string().optional(),
-  deliveryService: z.string().optional(),
   notes: z.string().optional(),
 })
+
+export type ParcelFormData = z.infer<typeof parcelSchema>
+export type ItemFormData = z.infer<typeof itemSchema>
+export type SerialNumberFormData = z.infer<typeof serialNumberSchema>
 
 export const phoneCallSchema = z.object({
   employee: z.string(),

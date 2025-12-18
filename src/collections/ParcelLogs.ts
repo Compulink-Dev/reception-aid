@@ -1,37 +1,34 @@
-//@ts-nocheck
-// collections/ParcelLogs.ts
+// collections/ParcelLogs.ts (Simplified version)
 import { CollectionConfig } from 'payload'
 
 export const ParcelLogs: CollectionConfig = {
   slug: 'parcel-logs',
   admin: {
-    useAsTitle: 'trackingNumber',
+    useAsTitle: 'from',
   },
   fields: [
     {
-      name: 'trackingNumber',
-      type: 'text',
-      unique: true,
-    },
-    {
-      name: 'deliveryNoteNumber',
-      type: 'text',
-    },
-    {
-      name: 'serialNumbers',
+      name: 'items',
       type: 'array',
       fields: [
         {
-          name: 'serialNumber',
+          name: 'description',
           type: 'text',
           required: true,
+          label: 'Item Description',
+        },
+        {
+          name: 'serialNumbers',
+          type: 'array',
+          fields: [
+            {
+              name: 'serialNumber',
+              type: 'text',
+              required: true,
+            },
+          ],
         },
       ],
-      admin: {
-        components: {
-          RowLabel: ({ data }: any) => data?.serialNumber || 'Serial Number',
-        },
-      },
     },
     {
       name: 'from',
@@ -51,15 +48,9 @@ export const ParcelLogs: CollectionConfig = {
     },
     {
       name: 'to',
-      type: 'relationship',
-      relationTo: 'employees',
+      type: 'text',
       required: true,
       label: 'To (Recipient)',
-    },
-    {
-      name: 'description',
-      type: 'textarea',
-      required: true,
     },
     {
       name: 'receivedAt',
@@ -96,10 +87,6 @@ export const ParcelLogs: CollectionConfig = {
     },
     {
       name: 'dimensions',
-      type: 'text',
-    },
-    {
-      name: 'deliveryService',
       type: 'text',
     },
     {

@@ -1,11 +1,9 @@
-//@ts-nocheck
 // components/security/VehicleCheckin.tsx
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { vehicleSchema } from '@/lib/validations'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,41 +23,84 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { toast } from 'sonner'
+import { vehicleSchema } from '@/lib/validations'
 
-type VehicleFormData = z.infer<typeof vehicleSchema>
+// Extend the vehicle schema for the form - make gate required
+const vehicleCheckinSchema = vehicleSchema.extend({
+  gate: z.enum(['main-gate', 'north-gate', 'south-gate', 'east-gate']),
+  notes: z.string().optional(),
+})
+
+type VehicleFormData = z.infer<typeof vehicleCheckinSchema>
 
 interface VehicleCheckinProps {
   onSuccess?: () => void
 }
 
 export default function VehicleCheckin({ onSuccess }: VehicleCheckinProps) {
+  const [isLoading, setIsLoading] = useState(false)
+
   const form = useForm<VehicleFormData>({
-    resolver: zodResolver(vehicleSchema),
+    resolver: zodResolver(vehicleCheckinSchema),
     defaultValues: {
       registrationNumber: '',
-      vehicleType: '',
+      vehicleType: undefined,
       ownerName: '',
       ownerPhone: '',
       purpose: '',
       currentMileage: undefined,
+      gate: 'main-gate',
+      notes: '',
     },
   })
 
   const onSubmit = async (data: VehicleFormData) => {
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      setIsLoading(true)
 
-      console.log('Vehicle check-in data:', data)
-      alert('Vehicle checked in successfully!')
+      // Prepare data for API
+      const vehicleData = {
+        registrationNumber: data.registrationNumber,
+        vehicleType: data.vehicleType,
+        ownerName: data.ownerName,
+        ownerPhone: data.ownerPhone || undefined,
+        purpose: data.purpose || undefined,
+        currentMileage: data.currentMileage || undefined,
+        notes: data.notes || undefined,
+        // These will be set by the API
+        entryTime: new Date().toISOString(),
+        securityGuard: 'Security Guard', // This should come from auth context
+      }
 
-      form.reset()
-      if (onSuccess) {
-        onSuccess()
+      console.log('Submitting vehicle data:', vehicleData)
+
+      // Make API call
+      const response = await fetch('/api/vehicles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(vehicleData),
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        toast.success('Vehicle checked in successfully!')
+        form.reset()
+        if (onSuccess) {
+          onSuccess()
+        }
+      } else {
+        console.error('Failed to check in vehicle:', result)
+        toast.error(`Failed to check in vehicle: ${result.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error checking in vehicle:', error)
-      alert('Failed to check in vehicle. Please try again.')
+      toast.error('An error occurred while checking in the vehicle')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -87,7 +128,7 @@ export default function VehicleCheckin({ onSuccess }: VehicleCheckinProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Vehicle Type *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
@@ -98,8 +139,6 @@ export default function VehicleCheckin({ onSuccess }: VehicleCheckinProps) {
                     <SelectItem value="employee-personal">Employee Personal</SelectItem>
                     <SelectItem value="visitor">Visitor</SelectItem>
                     <SelectItem value="delivery">Delivery</SelectItem>
-                    <SelectItem value="contractor">Contractor</SelectItem>
-                    <SelectItem value="service">Service Vehicle</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -144,7 +183,7 @@ export default function VehicleCheckin({ onSuccess }: VehicleCheckinProps) {
                 <FormControl>
                   <Textarea
                     placeholder="Client meeting, delivery, site visit..."
-                    className="min-h-[80px]"
+                    className="min-h-20"
                     {...field}
                   />
                 </FormControl>
@@ -164,7 +203,11 @@ export default function VehicleCheckin({ onSuccess }: VehicleCheckinProps) {
                     type="number"
                     placeholder="12345"
                     {...field}
-                    onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      field.onChange(value === '' ? undefined : parseInt(value, 10))
+                    }}
+                    value={field.value || ''}
                   />
                 </FormControl>
                 <FormMessage />
@@ -172,36 +215,54 @@ export default function VehicleCheckin({ onSuccess }: VehicleCheckinProps) {
             )}
           />
 
-          <FormItem>
-            <FormLabel>Gate</FormLabel>
-            <Select defaultValue="main-gate">
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select gate" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="main-gate">Main Gate</SelectItem>
-                <SelectItem value="north-gate">North Gate</SelectItem>
-                <SelectItem value="south-gate">South Gate</SelectItem>
-                <SelectItem value="east-gate">East Gate</SelectItem>
-              </SelectContent>
-            </Select>
-          </FormItem>
+          <FormField
+            control={form.control}
+            name="gate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Gate</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gate" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="main-gate">Main Gate</SelectItem>
+                    <SelectItem value="north-gate">North Gate</SelectItem>
+                    <SelectItem value="south-gate">South Gate</SelectItem>
+                    <SelectItem value="east-gate">East Gate</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <FormItem className="md:col-span-2">
-            <FormLabel>Additional Notes</FormLabel>
-            <FormControl>
-              <Textarea placeholder="Any additional information..." className="min-h-[60px]" />
-            </FormControl>
-          </FormItem>
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem className="md:col-span-2">
+                <FormLabel>Additional Notes</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Any additional information..."
+                    className="min-h-15"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         <div className="flex gap-3 pt-4">
-          <Button type="submit" disabled={form.formState.isSubmitting} className="flex-1">
-            {form.formState.isSubmitting ? 'Processing...' : 'Check In Vehicle'}
+          <Button type="submit" disabled={isLoading} className="flex-1">
+            {isLoading ? 'Processing...' : 'Check In Vehicle'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => form.reset()}>
+          <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isLoading}>
             Clear Form
           </Button>
         </div>

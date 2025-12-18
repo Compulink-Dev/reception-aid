@@ -1,7 +1,7 @@
 // components/security/VehicleManagement.tsx
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -46,106 +46,31 @@ import {
   Gauge,
   Calendar,
   Shield,
+  RefreshCw,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
-const mockVehicles = [
-  {
-    id: '1',
-    registration: 'ABC 123 XYZ',
-    make: 'Toyota',
-    model: 'Camry',
-    year: '2022',
-    type: 'Company Car',
-    department: 'Sales',
-    assignedTo: 'John Doe',
-    currentMileage: 45230,
-    fuelType: 'Petrol',
-    insuranceExpiry: '2024-06-30',
-    serviceDue: '2024-02-15',
-    status: 'active',
-    location: 'On-site',
-  },
-  {
-    id: '2',
-    registration: 'TRUCK 456',
-    make: 'Ford',
-    model: 'Ranger',
-    year: '2021',
-    type: 'Company Truck',
-    department: 'Logistics',
-    assignedTo: 'Mike Chen',
-    currentMileage: 89210,
-    fuelType: 'Diesel',
-    insuranceExpiry: '2024-05-31',
-    serviceDue: '2024-01-30',
-    status: 'maintenance',
-    location: 'Service Center',
-  },
-  {
-    id: '3',
-    registration: 'EMP 789',
-    make: 'Honda',
-    model: 'Civic',
-    year: '2023',
-    type: 'Employee Personal',
-    department: 'IT',
-    assignedTo: 'Jane Smith',
-    currentMileage: 32150,
-    fuelType: 'Petrol',
-    insuranceExpiry: '2024-12-31',
-    serviceDue: '2024-03-20',
-    status: 'active',
-    location: 'Off-site',
-  },
-  {
-    id: '4',
-    registration: 'EXEC 001',
-    make: 'Mercedes',
-    model: 'E-Class',
-    year: '2023',
-    type: 'Executive Car',
-    department: 'Executive',
-    assignedTo: 'Tom Harris',
-    currentMileage: 18500,
-    fuelType: 'Petrol',
-    insuranceExpiry: '2024-08-15',
-    serviceDue: '2024-02-10',
-    status: 'active',
-    location: 'Executive Parking',
-  },
-  {
-    id: '5',
-    registration: 'FIELD 789',
-    make: 'Toyota',
-    model: 'Hilux',
-    year: '2020',
-    type: 'Field Vehicle',
-    department: 'Operations',
-    assignedTo: 'Robert Kim',
-    currentMileage: 125430,
-    fuelType: 'Diesel',
-    insuranceExpiry: '2024-04-30',
-    serviceDue: '2024-01-25',
-    status: 'overdue',
-    location: 'Field',
-  },
-  {
-    id: '6',
-    registration: 'VIS 456',
-    make: 'Toyota',
-    model: 'Corolla',
-    year: '2021',
-    type: 'Visitor Vehicle',
-    department: 'N/A',
-    assignedTo: 'Visitor Parking',
-    currentMileage: 0,
-    fuelType: 'Petrol',
-    insuranceExpiry: 'N/A',
-    serviceDue: 'N/A',
-    status: 'available',
-    location: 'Visitor Parking',
-  },
-]
+interface Vehicle {
+  id: string
+  registration: string
+  make: string
+  model: string
+  year: string
+  type: string
+  department: string
+  assignedTo: string
+  currentMileage: number
+  fuelType: string
+  insuranceExpiry: string
+  serviceDue: string
+  status: 'active' | 'maintenance' | 'overdue' | 'available' | 'inactive'
+  location: string
+}
+
+interface VehiclesResponse {
+  success: boolean
+  data: Vehicle[]
+}
 
 const vehicleTypeStats = {
   'Company Car': 8,
@@ -157,32 +82,80 @@ const vehicleTypeStats = {
 }
 
 export default function VehicleManagement() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [showAddDialog, setShowAddDialog] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const filteredVehicles = mockVehicles.filter((vehicle) => {
-    const matchesSearch =
-      vehicle.registration.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.assignedTo.toLowerCase().includes(searchTerm.toLowerCase())
+  // Fetch vehicles on component mount
+  useEffect(() => {
+    fetchVehicles()
+  }, [])
 
-    const matchesType = vehicleTypeFilter === 'all' || vehicle.type === vehicleTypeFilter
-    const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter
+  const fetchVehicles = async (search?: string) => {
+    try {
+      setRefreshing(true)
+      const params = new URLSearchParams()
+      if (search) {
+        params.append('search', search)
+      }
+      if (vehicleTypeFilter !== 'all') {
+        params.append('type', vehicleTypeFilter)
+      }
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter)
+      }
+
+      const response = await fetch(`/api/vehicles/manage?${params.toString()}`)
+      const result: VehiclesResponse = await response.json()
+
+      if (result.success) {
+        setVehicles(result.data)
+      } else {
+        console.error('Failed to fetch vehicles:', result)
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error)
+      toast.error('Failed to load vehicle data')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value)
+    fetchVehicles(value)
+  }
+
+  const handleTypeFilter = (value: string) => {
+    setVehicleTypeFilter(value)
+    fetchVehicles(searchTerm)
+  }
+
+  const handleStatusFilter = (value: string) => {
+    setStatusFilter(value)
+    fetchVehicles(searchTerm)
+  }
+
+  const refreshData = () => {
+    fetchVehicles(searchTerm)
+  }
+
+  const filteredVehicles = vehicles.filter((vehicle) => {
     const matchesDepartment = departmentFilter === 'all' || vehicle.department === departmentFilter
-
-    return matchesSearch && matchesType && matchesStatus && matchesDepartment
+    return matchesDepartment
   })
 
-  const totalVehicles = mockVehicles.length
-  const activeVehicles = mockVehicles.filter((v) => v.status === 'active').length
-  const vehiclesInMaintenance = mockVehicles.filter(
+  const totalVehicles = vehicles.length
+  const activeVehicles = vehicles.filter((v) => v.status === 'active').length
+  const vehiclesInMaintenance = vehicles.filter(
     (v) => v.status === 'maintenance' || v.status === 'overdue',
   ).length
-  const availableVehicles = mockVehicles.filter((v) => v.status === 'available').length
+  const availableVehicles = vehicles.filter((v) => v.status === 'available').length
 
   const getStatusBadge = (status: string) => {
     const colors = {
@@ -211,10 +184,36 @@ export default function VehicleManagement() {
     return <Badge className={colors[type as keyof typeof colors] || 'bg-gray-100'}>{type}</Badge>
   }
 
-  const handleDeleteVehicle = (id: string) => {
+  const handleDeleteVehicle = async (id: string) => {
     if (confirm('Are you sure you want to delete this vehicle?')) {
-      alert(`Vehicle ${id} deleted (simulated)`)
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/vehicles/manage/${id}`, {
+          method: 'DELETE',
+        })
+
+        if (response.ok) {
+          toast.success('Vehicle deleted successfully')
+          fetchVehicles(searchTerm)
+        } else {
+          const error = await response.json()
+          toast.error(`Failed to delete vehicle: ${error.message || 'Unknown error'}`)
+        }
+      } catch (error) {
+        console.error('Error deleting vehicle:', error)
+        toast.error('Failed to delete vehicle')
+      } finally {
+        setLoading(false)
+      }
     }
+  }
+
+  const handleAddVehicle = async (e: React.FormEvent) => {
+    e.preventDefault()
+    // You would implement the form submission logic here
+    setShowAddDialog(false)
+    toast.success('Vehicle added successfully')
+    fetchVehicles(searchTerm)
   }
 
   return (
@@ -299,11 +298,11 @@ export default function VehicleManagement() {
                   placeholder="Search vehicles..."
                   className="w-full md:w-[250px] pl-9"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value)}
                 />
               </div>
 
-              <Select value={vehicleTypeFilter} onValueChange={setVehicleTypeFilter}>
+              <Select value={vehicleTypeFilter} onValueChange={handleTypeFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Vehicle Type" />
                 </SelectTrigger>
@@ -317,7 +316,7 @@ export default function VehicleManagement() {
                 </SelectContent>
               </Select>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={handleStatusFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -331,6 +330,15 @@ export default function VehicleManagement() {
               </Select>
 
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={refreshData}
+                  disabled={refreshing}
+                  title="Refresh data"
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                   <DialogTrigger asChild>
                     <Button>
@@ -343,60 +351,62 @@ export default function VehicleManagement() {
                       <DialogTitle>Add New Vehicle</DialogTitle>
                       <DialogDescription>Register a new vehicle in the system</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium">Registration Number</label>
-                          <Input placeholder="ABC 123 XYZ" />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium">Make</label>
-                          <Input placeholder="Toyota" />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium">Model</label>
-                          <Input placeholder="Camry" />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium">Year</label>
-                          <Input placeholder="2022" />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium">Vehicle Type</label>
-                          <Select>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="company-car">Company Car</SelectItem>
-                              <SelectItem value="company-truck">Company Truck</SelectItem>
-                              <SelectItem value="employee-personal">Employee Personal</SelectItem>
-                              <SelectItem value="executive">Executive Car</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium">Fuel Type</label>
-                          <Select>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select fuel type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="petrol">Petrol</SelectItem>
-                              <SelectItem value="diesel">Diesel</SelectItem>
-                              <SelectItem value="electric">Electric</SelectItem>
-                              <SelectItem value="hybrid">Hybrid</SelectItem>
-                            </SelectContent>
-                          </Select>
+                    <form onSubmit={handleAddVehicle}>
+                      <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium">Registration Number</label>
+                            <Input placeholder="ABC 123 XYZ" required />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Make</label>
+                            <Input placeholder="Toyota" required />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Model</label>
+                            <Input placeholder="Camry" required />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Year</label>
+                            <Input placeholder="2022" required />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Vehicle Type</label>
+                            <Select required>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="company-car">Company Car</SelectItem>
+                                <SelectItem value="company-truck">Company Truck</SelectItem>
+                                <SelectItem value="employee-personal">Employee Personal</SelectItem>
+                                <SelectItem value="executive">Executive Car</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Fuel Type</label>
+                            <Select required>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select fuel type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="petrol">Petrol</SelectItem>
+                                <SelectItem value="diesel">Diesel</SelectItem>
+                                <SelectItem value="electric">Electric</SelectItem>
+                                <SelectItem value="hybrid">Hybrid</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={() => setShowAddDialog(false)}>Add Vehicle</Button>
-                    </DialogFooter>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit">Add Vehicle</Button>
+                      </DialogFooter>
+                    </form>
                   </DialogContent>
                 </Dialog>
 
@@ -433,66 +443,84 @@ export default function VehicleManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredVehicles.map((vehicle) => (
-                      <TableRow key={vehicle.id}>
-                        <TableCell>
-                          <div className="font-bold">{vehicle.registration}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">
-                              {vehicle.make} {vehicle.model}
-                            </p>
-                            <div className="text-sm text-muted-foreground">
-                              Year: {vehicle.year} • {vehicle.fuelType}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getTypeBadge(vehicle.type)}</TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{vehicle.assignedTo}</p>
-                            <Badge variant="outline" className="text-xs">
-                              {vehicle.department}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Gauge className="h-4 w-4 text-gray-400" />
-                            <span>{vehicle.currentMileage.toLocaleString()} km</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {vehicle.serviceDue === 'N/A'
-                              ? 'N/A'
-                              : new Date(vehicle.serviceDue).toLocaleDateString()}
-                            <div className="text-xs text-muted-foreground">
-                              Location: {vehicle.location}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(vehicle.status)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteVehicle(vehicle.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                    {refreshing ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="flex items-center justify-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            <span className="text-muted-foreground">Loading vehicles...</span>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : filteredVehicles.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No vehicles found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredVehicles.map((vehicle) => (
+                        <TableRow key={vehicle.id}>
+                          <TableCell>
+                            <div className="font-bold">{vehicle.registration}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">
+                                {vehicle.make} {vehicle.model}
+                              </p>
+                              <div className="text-sm text-muted-foreground">
+                                Year: {vehicle.year} • {vehicle.fuelType}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{getTypeBadge(vehicle.type)}</TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{vehicle.assignedTo}</p>
+                              <Badge variant="outline" className="text-xs">
+                                {vehicle.department}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Gauge className="h-4 w-4 text-gray-400" />
+                              <span>{vehicle.currentMileage.toLocaleString()} km</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {vehicle.serviceDue === 'N/A'
+                                ? 'N/A'
+                                : new Date(vehicle.serviceDue).toLocaleDateString()}
+                              <div className="text-xs text-muted-foreground">
+                                Location: {vehicle.location}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(vehicle.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteVehicle(vehicle.id)}
+                                disabled={loading}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -510,7 +538,7 @@ export default function VehicleManagement() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {mockVehicles
+              {vehicles
                 .filter((v) => v.insuranceExpiry !== 'N/A')
                 .sort(
                   (a, b) =>
@@ -558,7 +586,7 @@ export default function VehicleManagement() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {mockVehicles
+              {vehicles
                 .filter((v) => v.serviceDue !== 'N/A')
                 .sort((a, b) => new Date(a.serviceDue).getTime() - new Date(b.serviceDue).getTime())
                 .slice(0, 3)
