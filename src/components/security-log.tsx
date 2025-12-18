@@ -1,7 +1,7 @@
 // components/security/SecurityLogs.tsx
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -34,81 +34,38 @@ import {
   XCircle,
   AlertTriangle,
   Eye,
+  RefreshCw,
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { toast } from 'sonner'
 
-const mockSecurityLogs = [
-  {
-    id: '1',
-    timestamp: '2024-01-20T09:30:00',
-    activity: 'Vehicle Entry',
-    vehicleType: 'Company Car',
-    registration: 'ABC 123 XYZ',
-    driver: 'John Doe',
-    department: 'Sales',
-    purpose: 'Client Meeting',
-    status: 'approved',
-    gate: 'Main Gate',
-    officer: 'Officer Smith',
-    duration: '2 hours',
-  },
-  {
-    id: '2',
-    timestamp: '2024-01-20T10:15:00',
-    activity: 'Visitor Entry',
-    vehicleType: 'Personal',
-    registration: 'XYZ 456 DEF',
-    driver: 'Sarah Johnson (Visitor)',
-    department: 'N/A',
-    purpose: 'Job Interview',
-    status: 'approved',
-    gate: 'North Gate',
-    officer: 'Officer Brown',
-    duration: '1.5 hours',
-  },
-  {
-    id: '3',
-    timestamp: '2024-01-20T11:45:00',
-    activity: 'Vehicle Exit',
-    vehicleType: 'Delivery Truck',
-    registration: 'TRUCK 789',
-    driver: 'Mike Delivery',
-    department: 'Logistics',
-    purpose: 'Package Delivery',
-    status: 'completed',
-    gate: 'Main Gate',
-    officer: 'Officer Smith',
-    duration: '45 minutes',
-  },
-  {
-    id: '4',
-    timestamp: '2024-01-20T14:20:00',
-    activity: 'Vehicle Entry',
-    vehicleType: 'Company Car',
-    registration: 'EMP 456',
-    driver: 'Jane Smith',
-    department: 'IT',
-    purpose: 'Site Visit',
-    status: 'pending',
-    gate: 'Main Gate',
-    officer: 'Officer Wilson',
-    duration: 'Ongoing',
-  },
-  {
-    id: '5',
-    timestamp: '2024-01-20T16:00:00',
-    activity: 'Vehicle Exit',
-    vehicleType: 'Personal',
-    registration: 'PERS 123',
-    driver: 'Bob Wilson',
-    department: 'Marketing',
-    purpose: 'Business Lunch',
-    status: 'rejected',
-    gate: 'South Gate',
-    officer: 'Officer Davis',
-    duration: 'Rejected',
-  },
-]
+interface SecurityLog {
+  id: string
+  timestamp: string
+  activity: string
+  vehicleType: string
+  registration: string
+  driver: string
+  department: string
+  purpose: string
+  status: 'approved' | 'pending' | 'completed' | 'rejected'
+  gate: string
+  officer: string
+  duration?: string
+}
+
+interface SecurityLogsResponse {
+  success: boolean
+  data: SecurityLog[]
+  pagination?: {
+    totalDocs: number
+    totalPages: number
+    page: number
+    limit: number
+    hasNextPage: boolean
+    hasPrevPage: boolean
+  }
+}
 
 const statusColors = {
   approved: 'bg-green-100 text-green-800',
@@ -126,30 +83,75 @@ const activityIcons = {
 }
 
 export default function SecurityLogs() {
+  const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [activityFilter, setActivityFilter] = useState('all')
   const [gateFilter, setGateFilter] = useState('all')
   const [timeRange, setTimeRange] = useState('today')
+  const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const filteredLogs = mockSecurityLogs.filter((log) => {
-    const matchesSearch =
-      log.driver.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.registration.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.department.toLowerCase().includes(searchTerm.toLowerCase())
+  // Fetch security logs on component mount
+  useEffect(() => {
+    fetchSecurityLogs()
+  }, [])
 
-    const matchesStatus = statusFilter === 'all' || log.status === statusFilter
-    const matchesActivity = activityFilter === 'all' || log.activity === activityFilter
-    const matchesGate = gateFilter === 'all' || log.gate === gateFilter
+  const fetchSecurityLogs = async (search?: string, status?: string) => {
+    try {
+      setRefreshing(true)
+      const params = new URLSearchParams()
+      if (search) {
+        params.append('search', search)
+      }
+      if (status && status !== 'all') {
+        params.append('status', status)
+      }
+      if (activityFilter !== 'all') {
+        params.append('activity', activityFilter)
+      }
+      if (gateFilter !== 'all') {
+        params.append('gate', gateFilter)
+      }
 
-    return matchesSearch && matchesStatus && matchesActivity && matchesGate
-  })
+      const response = await fetch(`/api/security-logs?${params.toString()}`)
+      const result: SecurityLogsResponse = await response.json()
 
-  const stats = {
-    totalEntries: mockSecurityLogs.filter((l) => l.activity.includes('Entry')).length,
-    totalExits: mockSecurityLogs.filter((l) => l.activity.includes('Exit')).length,
-    pendingApprovals: mockSecurityLogs.filter((l) => l.status === 'pending').length,
-    todayActivity: mockSecurityLogs.length,
+      if (result.success) {
+        setSecurityLogs(result.data)
+      } else {
+        console.error('Failed to fetch security logs:', result)
+      }
+    } catch (error) {
+      console.error('Error fetching security logs:', error)
+      toast.error('Failed to load security logs')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value)
+    fetchSecurityLogs(value, statusFilter)
+  }
+
+  const handleStatusFilter = (value: string) => {
+    setStatusFilter(value)
+    fetchSecurityLogs(searchTerm, value)
+  }
+
+  const handleActivityFilter = (value: string) => {
+    setActivityFilter(value)
+    fetchSecurityLogs(searchTerm, statusFilter)
+  }
+
+  const handleGateFilter = (value: string) => {
+    setGateFilter(value)
+    fetchSecurityLogs(searchTerm, statusFilter)
+  }
+
+  const refreshData = () => {
+    fetchSecurityLogs(searchTerm, statusFilter)
   }
 
   const exportLogs = () => {
@@ -165,7 +167,7 @@ export default function SecurityLogs() {
       'Gate',
       'Officer',
     ]
-    const csvData = filteredLogs.map((log) => [
+    const csvData = securityLogs.map((log) => [
       format(new Date(log.timestamp), 'yyyy-MM-dd HH:mm:ss'),
       log.activity,
       log.vehicleType,
@@ -188,6 +190,12 @@ export default function SecurityLogs() {
     a.click()
   }
 
+  // Stats calculations
+  const totalEntries = securityLogs.filter((l) => l.activity.includes('Entry')).length
+  const totalExits = securityLogs.filter((l) => l.activity.includes('Exit')).length
+  const pendingApprovals = securityLogs.filter((l) => l.status === 'pending').length
+  const todayActivity = securityLogs.length
+
   const ActivityIcon = ({ activity }: { activity: string }) => {
     const Icon = activityIcons[activity as keyof typeof activityIcons] || Clock
     return <Icon className="h-4 w-4" />
@@ -203,7 +211,7 @@ export default function SecurityLogs() {
             <Car className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalEntries}</div>
+            <div className="text-2xl font-bold">{totalEntries}</div>
             <p className="text-xs text-muted-foreground">{`Today's vehicle entries`}</p>
           </CardContent>
         </Card>
@@ -214,7 +222,7 @@ export default function SecurityLogs() {
             <Car className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalExits}</div>
+            <div className="text-2xl font-bold">{totalExits}</div>
             <p className="text-xs text-muted-foreground">{`Today's vehicle exits`}</p>
           </CardContent>
         </Card>
@@ -225,7 +233,7 @@ export default function SecurityLogs() {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingApprovals}</div>
+            <div className="text-2xl font-bold">{pendingApprovals}</div>
             <p className="text-xs text-muted-foreground">Require attention</p>
           </CardContent>
         </Card>
@@ -236,7 +244,7 @@ export default function SecurityLogs() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.todayActivity}</div>
+            <div className="text-2xl font-bold">{todayActivity}</div>
             <p className="text-xs text-muted-foreground">Total security logs</p>
           </CardContent>
         </Card>
@@ -254,11 +262,11 @@ export default function SecurityLogs() {
                   placeholder="Search logs..."
                   className="w-full md:w-[250px] pl-9"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value)}
                 />
               </div>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={handleStatusFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -271,7 +279,7 @@ export default function SecurityLogs() {
                 </SelectContent>
               </Select>
 
-              <Select value={activityFilter} onValueChange={setActivityFilter}>
+              <Select value={activityFilter} onValueChange={handleActivityFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Activity" />
                 </SelectTrigger>
@@ -284,8 +292,14 @@ export default function SecurityLogs() {
               </Select>
 
               <div className="flex gap-2">
-                <Button variant="outline" size="icon">
-                  <Filter className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={refreshData}
+                  disabled={refreshing}
+                  title="Refresh data"
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 </Button>
                 <Button variant="outline" onClick={exportLogs}>
                   <Download className="h-4 w-4 mr-2" />
@@ -320,54 +334,71 @@ export default function SecurityLogs() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell>
-                          <div className="text-sm">
-                            {format(new Date(log.timestamp), 'HH:mm')}
-                            <div className="text-xs text-muted-foreground">
-                              {format(new Date(log.timestamp), 'MMM d')}
-                            </div>
+                    {refreshing ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="flex items-center justify-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            <span className="text-muted-foreground">Loading logs...</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <ActivityIcon activity={log.activity} />
-                            <span>{log.activity}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{log.registration}</div>
-                            <div className="text-xs text-muted-foreground">{log.vehicleType}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{log.driver}</p>
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {log.department}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-xs">
-                          <p className="truncate">{log.purpose}</p>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={statusColors[log.status as keyof typeof statusColors]}>
-                            {log.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{log.gate}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : securityLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No security logs found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      securityLogs.map((log) => (
+                        <TableRow key={log.id}>
+                          <TableCell>
+                            <div className="text-sm">
+                              {format(new Date(log.timestamp), 'HH:mm')}
+                              <div className="text-xs text-muted-foreground">
+                                {format(new Date(log.timestamp), 'MMM d')}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <ActivityIcon activity={log.activity} />
+                              <span>{log.activity}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{log.registration}</div>
+                              <div className="text-xs text-muted-foreground">{log.vehicleType}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{log.driver}</p>
+                              <Badge variant="outline" className="text-xs mt-1">
+                                {log.department}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-xs">
+                            <p className="truncate">{log.purpose}</p>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={statusColors[log.status] || 'bg-gray-100'}>
+                              {log.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{log.gate}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -383,7 +414,7 @@ export default function SecurityLogs() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {mockSecurityLogs.slice(0, 5).map((log) => (
+            {securityLogs.slice(0, 5).map((log) => (
               <div key={log.id} className="flex items-start gap-4 p-3 border rounded-lg">
                 <div className="p-2 bg-gray-100 rounded-lg">
                   <ActivityIcon activity={log.activity} />
@@ -400,7 +431,7 @@ export default function SecurityLogs() {
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(log.timestamp), 'h:mm a')}
                       </p>
-                      <Badge className={statusColors[log.status as keyof typeof statusColors]}>
+                      <Badge className={statusColors[log.status] || 'bg-gray-100'}>
                         {log.status}
                       </Badge>
                     </div>

@@ -302,24 +302,26 @@ export interface TravelLog {
  */
 export interface ParcelLog {
   id: string;
-  trackingNumber?: string | null;
-  deliveryNoteNumber?: string | null;
-  serialNumbers?:
+  items?:
     | {
-        serialNumber: string;
+        description: string;
+        serialNumbers?:
+          | {
+              serialNumber: string;
+              id?: string | null;
+            }[]
+          | null;
         id?: string | null;
       }[]
     | null;
   from: string;
   senderType: 'incoming' | 'outgoing' | 'other';
-  to: string | Employee;
-  description: string;
+  to: string;
   receivedAt?: string | null;
   collectedAt?: string | null;
   status?: ('received' | 'collected' | 'returned') | null;
   weight?: string | null;
   dimensions?: string | null;
-  deliveryService?: string | null;
   notes?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -647,24 +649,26 @@ export interface TravelLogsSelect<T extends boolean = true> {
  * via the `definition` "parcel-logs_select".
  */
 export interface ParcelLogsSelect<T extends boolean = true> {
-  trackingNumber?: T;
-  deliveryNoteNumber?: T;
-  serialNumbers?:
+  items?:
     | T
     | {
-        serialNumber?: T;
+        description?: T;
+        serialNumbers?:
+          | T
+          | {
+              serialNumber?: T;
+              id?: T;
+            };
         id?: T;
       };
   from?: T;
   senderType?: T;
   to?: T;
-  description?: T;
   receivedAt?: T;
   collectedAt?: T;
   status?: T;
   weight?: T;
   dimensions?: T;
-  deliveryService?: T;
   notes?: T;
   updatedAt?: T;
   createdAt?: T;

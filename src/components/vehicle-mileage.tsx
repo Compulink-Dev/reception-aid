@@ -1,7 +1,7 @@
 // components/security/VehicleMileage.tsx
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -33,6 +33,7 @@ import {
   Gauge,
   Calendar,
   BarChart3,
+  RefreshCw,
 } from 'lucide-react'
 import {
   BarChart,
@@ -46,80 +47,29 @@ import {
   LineChart,
   Line,
 } from 'recharts'
+import { toast } from 'sonner'
 
-const mockMileageData = [
-  {
-    id: '1',
-    vehicle: 'Toyota Camry',
-    registration: 'ABC 123 XYZ',
-    type: 'Company Car',
-    currentMileage: 45230,
-    lastRecorded: 44500,
-    mileageAdded: 730,
-    fuelEfficiency: 12.5,
-    department: 'Sales',
-    driver: 'John Doe',
-    lastUpdated: '2024-01-20',
-    status: 'normal',
-  },
-  {
-    id: '2',
-    vehicle: 'Ford Ranger',
-    registration: 'TRUCK 456',
-    type: 'Company Truck',
-    currentMileage: 89210,
-    lastRecorded: 88500,
-    mileageAdded: 710,
-    fuelEfficiency: 8.2,
-    department: 'Logistics',
-    driver: 'Mike Chen',
-    lastUpdated: '2024-01-20',
-    status: 'maintenance',
-  },
-  {
-    id: '3',
-    vehicle: 'Honda Civic',
-    registration: 'EMP 789',
-    type: 'Employee Personal',
-    currentMileage: 32150,
-    lastRecorded: 32000,
-    mileageAdded: 150,
-    fuelEfficiency: 15.3,
-    department: 'IT',
-    driver: 'Jane Smith',
-    lastUpdated: '2024-01-19',
-    status: 'normal',
-  },
-  {
-    id: '4',
-    vehicle: 'Mercedes Benz',
-    registration: 'EXEC 001',
-    type: 'Executive Car',
-    currentMileage: 18500,
-    lastRecorded: 18200,
-    mileageAdded: 300,
-    fuelEfficiency: 10.8,
-    department: 'Executive',
-    driver: 'Tom Harris',
-    lastUpdated: '2024-01-18',
-    status: 'normal',
-  },
-  {
-    id: '5',
-    vehicle: 'Toyota Hilux',
-    registration: 'FIELD 789',
-    type: 'Field Vehicle',
-    currentMileage: 125430,
-    lastRecorded: 124800,
-    mileageAdded: 630,
-    fuelEfficiency: 9.5,
-    department: 'Operations',
-    driver: 'Robert Kim',
-    lastUpdated: '2024-01-17',
-    status: 'overdue',
-  },
-]
+interface VehicleMileage {
+  id: string
+  vehicle: string
+  registration: string
+  type: string
+  currentMileage: number
+  lastRecorded: number
+  mileageAdded: number
+  fuelEfficiency: number
+  department: string
+  driver: string
+  lastUpdated: string
+  status: 'normal' | 'maintenance' | 'overdue'
+}
 
+interface VehicleMileageResponse {
+  success: boolean
+  data: VehicleMileage[]
+}
+
+// Mock data for charts - in real app, you would fetch this from API
 const monthlyMileageTrend = [
   { month: 'Jul', mileage: 4200, trips: 45 },
   { month: 'Aug', mileage: 3850, trips: 42 },
@@ -138,28 +88,79 @@ const vehicleTypeMileage = [
 ]
 
 export default function VehicleMileage() {
+  const [vehicleMileage, setVehicleMileage] = useState<VehicleMileage[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const filteredData = mockMileageData.filter((vehicle) => {
-    const matchesSearch =
-      vehicle.vehicle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.registration.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.driver.toLowerCase().includes(searchTerm.toLowerCase())
+  // Fetch vehicle mileage on component mount
+  useEffect(() => {
+    fetchVehicleMileage()
+  }, [])
 
-    const matchesType = vehicleTypeFilter === 'all' || vehicle.type === vehicleTypeFilter
+  const fetchVehicleMileage = async (search?: string) => {
+    try {
+      setRefreshing(true)
+      const params = new URLSearchParams()
+      if (search) {
+        params.append('search', search)
+      }
+      if (vehicleTypeFilter !== 'all') {
+        params.append('type', vehicleTypeFilter)
+      }
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter)
+      }
+
+      const response = await fetch(`/api/vehicles/mileage?${params.toString()}`)
+      const result: VehicleMileageResponse = await response.json()
+
+      if (result.success) {
+        setVehicleMileage(result.data)
+      } else {
+        console.error('Failed to fetch vehicle mileage:', result)
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle mileage:', error)
+      toast.error('Failed to load vehicle mileage data')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value)
+    fetchVehicleMileage(value)
+  }
+
+  const handleTypeFilter = (value: string) => {
+    setVehicleTypeFilter(value)
+    fetchVehicleMileage(searchTerm)
+  }
+
+  const handleStatusFilter = (value: string) => {
+    setStatusFilter(value)
+    fetchVehicleMileage(searchTerm)
+  }
+
+  const refreshData = () => {
+    fetchVehicleMileage(searchTerm)
+  }
+
+  const filteredData = vehicleMileage.filter((vehicle) => {
     const matchesDepartment = departmentFilter === 'all' || vehicle.department === departmentFilter
-    const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter
-
-    return matchesSearch && matchesType && matchesDepartment && matchesStatus
+    return matchesDepartment
   })
 
-  const totalMileage = mockMileageData.reduce((sum, v) => sum + v.currentMileage, 0)
+  const totalMileage = vehicleMileage.reduce((sum, v) => sum + v.currentMileage, 0)
   const avgMileageAdded =
-    mockMileageData.reduce((sum, v) => sum + v.mileageAdded, 0) / mockMileageData.length
-  const vehiclesNeedingMaintenance = mockMileageData.filter(
+    vehicleMileage.length > 0
+      ? vehicleMileage.reduce((sum, v) => sum + v.mileageAdded, 0) / vehicleMileage.length
+      : 0
+  const vehiclesNeedingMaintenance = vehicleMileage.filter(
     (v) => v.status === 'maintenance' || v.status === 'overdue',
   ).length
   const totalTrips = monthlyMileageTrend.reduce((sum, m) => sum + m.trips, 0)
@@ -178,9 +179,28 @@ export default function VehicleMileage() {
     )
   }
 
-  const updateMileage = (vehicleId: string, newMileage: number) => {
-    alert(`Updating mileage for vehicle ${vehicleId} to ${newMileage}`)
-    // In a real app, this would make an API call
+  const updateMileage = async (vehicleId: string, newMileage: number) => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/vehicles/mileage/${vehicleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentMileage: newMileage }),
+      })
+
+      if (response.ok) {
+        toast.success('Mileage updated successfully')
+        fetchVehicleMileage(searchTerm)
+      } else {
+        const error = await response.json()
+        toast.error(`Failed to update mileage: ${error.message || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error updating mileage:', error)
+      toast.error('Failed to update mileage')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -290,11 +310,11 @@ export default function VehicleMileage() {
                   placeholder="Search vehicles..."
                   className="w-full md:w-[250px] pl-9"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value)}
                 />
               </div>
 
-              <Select value={vehicleTypeFilter} onValueChange={setVehicleTypeFilter}>
+              <Select value={vehicleTypeFilter} onValueChange={handleTypeFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Vehicle Type" />
                 </SelectTrigger>
@@ -307,7 +327,7 @@ export default function VehicleMileage() {
                 </SelectContent>
               </Select>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={handleStatusFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -320,13 +340,18 @@ export default function VehicleMileage() {
               </Select>
 
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={refreshData}
+                  disabled={refreshing}
+                  title="Refresh data"
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
                 <Button variant="outline">
                   <Download className="h-4 w-4 mr-2" />
                   Export
-                </Button>
-                <Button>
-                  <Gauge className="h-4 w-4 mr-2" />
-                  Update All
                 </Button>
               </div>
             </div>
@@ -357,60 +382,80 @@ export default function VehicleMileage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredData.map((vehicle) => (
-                      <TableRow key={vehicle.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{vehicle.vehicle}</p>
-                            <div className="text-sm text-muted-foreground">
-                              {vehicle.registration} • {vehicle.type}
-                            </div>
+                    {refreshing ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="flex items-center justify-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            <span className="text-muted-foreground">Loading data...</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-bold">
-                            {vehicle.currentMileage.toLocaleString()} km
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {vehicle.lastRecorded.toLocaleString()} km
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(vehicle.lastUpdated).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className="bg-blue-100 text-blue-800">
-                            +{vehicle.mileageAdded} km
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Fuel className="h-4 w-4 text-gray-400" />
-                            <span>{vehicle.fuelEfficiency} km/L</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{vehicle.driver}</p>
-                            <Badge variant="outline" className="text-xs">
-                              {vehicle.department}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(vehicle.status)}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateMileage(vehicle.id, vehicle.currentMileage + 100)}
-                          >
-                            Update
-                          </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : filteredData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No vehicle mileage records found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredData.map((vehicle) => (
+                        <TableRow key={vehicle.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{vehicle.vehicle}</p>
+                              <div className="text-sm text-muted-foreground">
+                                {vehicle.registration} • {vehicle.type}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-bold">
+                              {vehicle.currentMileage.toLocaleString()} km
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {vehicle.lastRecorded.toLocaleString()} km
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(vehicle.lastUpdated).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className="bg-blue-100 text-blue-800">
+                              +{vehicle.mileageAdded} km
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Fuel className="h-4 w-4 text-gray-400" />
+                              <span>{vehicle.fuelEfficiency} km/L</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{vehicle.driver}</p>
+                              <Badge variant="outline" className="text-xs">
+                                {vehicle.department}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(vehicle.status)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                updateMileage(vehicle.id, vehicle.currentMileage + 100)
+                              }
+                              disabled={loading}
+                            >
+                              Update
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -427,7 +472,7 @@ export default function VehicleMileage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {mockMileageData
+            {vehicleMileage
               .filter((v) => v.status === 'maintenance' || v.status === 'overdue')
               .map((vehicle) => (
                 <div

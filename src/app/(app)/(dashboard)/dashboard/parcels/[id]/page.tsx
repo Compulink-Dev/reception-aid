@@ -15,6 +15,7 @@ import {
   Printer,
   Download,
   Mail,
+  Hash,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -30,22 +31,30 @@ import {
 import ParcelEditForm from '@/components/parcel-edit-form'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { DeleteConfirmDialog } from '@/components/delete-confirm-dialog'
+
+interface SerialNumber {
+  id: string
+  serialNumber: string
+}
+
+interface ParcelItem {
+  id: string
+  description: string
+  serialNumbers: SerialNumber[]
+}
 
 interface Parcel {
   id: string
-  trackingNumber?: string
-  deliveryNoteNumber?: string
-  serialNumbers?: Array<{ id: string; serialNumber: string }>
+  items?: ParcelItem[]
   from: string
   senderType: 'incoming' | 'outgoing' | 'other'
-  to: string | { id: string; name: string; email: string }
-  description: string
+  to: string
   receivedAt: string
   collectedAt: string | null
   status: 'received' | 'collected' | 'returned'
   weight?: string
   dimensions?: string
-  deliveryService?: string
   notes?: string
   createdAt?: string
   updatedAt?: string
@@ -57,6 +66,10 @@ export default function ParcelDetailPage() {
   const [parcel, setParcel] = useState<Parcel | null>(null)
   const [loading, setLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+  // Check if user is admin
+  const isAdmin = true // Replace with actual admin check
 
   useEffect(() => {
     if (params.id) {
@@ -85,24 +98,32 @@ export default function ParcelDetailPage() {
     }
   }
 
-  const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this parcel record?')) {
-      try {
-        const response = await fetch(`/api/parcels/${params.id}`, {
-          method: 'DELETE',
-        })
+  const handleDeleteClick = () => {
+    if (!isAdmin) {
+      toast.error('Only administrators can delete parcels')
+      return
+    }
+    setDeleteDialogOpen(true)
+  }
 
-        if (response.ok) {
-          toast.success('Parcel deleted successfully')
-          router.push('/dashboard/parcels')
-        } else {
-          const error = await response.json()
-          toast.error(`Failed to delete parcel: ${error.message || 'Unknown error'}`)
-        }
-      } catch (error) {
-        console.error('Error deleting parcel:', error)
-        toast.error('Error deleting parcel. Please try again.')
+  const handleDeleteConfirm = async () => {
+    try {
+      const response = await fetch(`/api/parcels/${params.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('Parcel deleted successfully')
+        router.push('/dashboard/parcels')
+      } else {
+        const error = await response.json()
+        toast.error(`Failed to delete parcel: ${error.message || 'Unknown error'}`)
       }
+    } catch (error) {
+      console.error('Error deleting parcel:', error)
+      toast.error('Error deleting parcel. Please try again.')
+    } finally {
+      setDeleteDialogOpen(false)
     }
   }
 
@@ -206,11 +227,17 @@ export default function ParcelDetailPage() {
     )
   }
 
-  const recipientName = typeof parcel.to === 'object' ? parcel.to.name : parcel.to
-  const recipientEmail = typeof parcel.to === 'object' ? parcel.to.email : ''
-
   return (
     <div className="space-y-6">
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Parcel"
+        description="Are you sure you want to delete this parcel record? This action cannot be undone."
+      />
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -222,8 +249,7 @@ export default function ParcelDetailPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Parcel Details</h1>
             <p className="text-muted-foreground">
-              Tracking #: {parcel.trackingNumber || 'N/A'} • DN#:{' '}
-              {parcel.deliveryNoteNumber || 'N/A'}
+              From: {parcel.from} • To: {parcel.to}
             </p>
           </div>
         </div>
@@ -261,9 +287,11 @@ export default function ParcelDetailPage() {
           <Button variant="outline" size="icon" title="Export">
             <Download className="h-4 w-4" />
           </Button>
-          <Button variant="destructive" size="icon" onClick={handleDelete} title="Delete">
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {isAdmin && (
+            <Button variant="destructive" size="icon" onClick={handleDeleteClick} title="Delete">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -278,16 +306,6 @@ export default function ParcelDetailPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Tracking Number
-                  </label>
-                  <p className="font-medium">{parcel.trackingNumber || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Delivery Note</label>
-                  <p className="font-medium">{parcel.deliveryNoteNumber || 'N/A'}</p>
-                </div>
-                <div>
                   <label className="text-sm font-medium text-muted-foreground">Sender</label>
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{parcel.from}</p>
@@ -298,23 +316,8 @@ export default function ParcelDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">Recipient</label>
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <p className="font-medium">{recipientName}</p>
-                    {recipientEmail && (
-                      <a
-                        href={`mailto:${recipientEmail}`}
-                        className="text-blue-600 hover:text-blue-800"
-                        title={`Email ${recipientName}`}
-                      >
-                        <Mail className="h-4 w-4" />
-                      </a>
-                    )}
+                    <p className="font-medium">{parcel.to}</p>
                   </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Delivery Service
-                  </label>
-                  <p className="font-medium">{parcel.deliveryService || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Status</label>
@@ -322,25 +325,42 @@ export default function ParcelDetailPage() {
                 </div>
               </div>
 
-              <Separator />
-
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Description</label>
-                <p className="mt-1 whitespace-pre-wrap">{parcel.description}</p>
-              </div>
-
-              {parcel.serialNumbers && parcel.serialNumbers.length > 0 && (
+              {parcel.items && parcel.items.length > 0 && (
                 <>
                   <Separator />
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Serial Numbers
-                    </label>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {parcel.serialNumbers.map((sn, index) => (
-                        <Badge key={index} variant="outline">
-                          {sn.serialNumber}
-                        </Badge>
+                    <label className="text-sm font-medium text-muted-foreground">Items</label>
+                    <div className="mt-2 space-y-4">
+                      {parcel.items.map((item, index) => (
+                        <div key={item.id || index} className="p-4 border rounded-md">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="font-medium text-base">{item.description}</p>
+                              <div className="mt-2 space-y-1">
+                                {item.serialNumbers && item.serialNumbers.length > 0 ? (
+                                  item.serialNumbers.map((serial, serialIndex) => (
+                                    <div
+                                      key={serial.id || serialIndex}
+                                      className="flex items-center gap-2 text-sm"
+                                    >
+                                      <Hash className="h-3 w-3 text-muted-foreground" />
+                                      <span className="text-muted-foreground">
+                                        {serial.serialNumber}
+                                      </span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">
+                                    No serial numbers recorded
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="ml-2">
+                              {item.serialNumbers?.length || 0} serial(s)
+                            </Badge>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>

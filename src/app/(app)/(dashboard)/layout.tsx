@@ -24,6 +24,7 @@ import {
   UserCheck,
   HelpCircle,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface UserData {
   name: string
@@ -326,27 +327,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <p className="text-sm text-gray-500">{user.email}</p>
                   </div>
                   <div className="p-2">
-                    <Link
-                      href="/dashboard/profile"
-                      className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100 text-gray-700"
-                    >
-                      <User className="h-4 w-4" />
-                      <span>My Profile</span>
-                    </Link>
-                    <Link
-                      href="/dashboard/settings"
-                      className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100 text-gray-700"
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span>Settings</span>
-                    </Link>
-                    <button
+                    <Button variant={'ghost'} asChild>
+                      <Link
+                        href="/dashboard/profile"
+                        className="flex items-center  rounded hover:bg-gray-100 text-gray-700"
+                      >
+                        <User className="h-4 w-4" />
+                        <span>My Profile</span>
+                      </Link>
+                    </Button>
+                    <Button variant={'ghost'} asChild>
+                      <Link
+                        href="/dashboard/settings"
+                        className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100 text-gray-700"
+                      >
+                        <Settings className="h-4 w-4" />
+                        <span>Settings</span>
+                      </Link>
+                    </Button>
+                    <Button
                       onClick={handleLogout}
                       className="w-full flex items-center space-x-2 px-3 py-2 rounded hover:bg-red-50 text-red-600 mt-2"
                     >
                       <LogOut className="h-4 w-4" />
                       <span>Logout</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
