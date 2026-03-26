@@ -28,7 +28,7 @@ export default function Home() {
     },
     {
       icon: <Car className="h-8 w-8" />,
-      title: 'Vehicle Tracking',
+      title: 'Vehicle Tracking.',
       description: 'Track vehicle entry/exit with mileage logging for security and logistics.',
       color: 'bg-green-100 text-green-600',
     },
