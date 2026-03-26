@@ -64,7 +64,7 @@ export default function TrackingPage() {
   const fetchRecentParcels = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/parcels?limit=5&sort=-receivedAt')
+      const response = await fetch('/api/parcels?limit=8&sort=-receivedAt')
       const result: ParcelsResponse = await response.json()
 
       if (result.success) {

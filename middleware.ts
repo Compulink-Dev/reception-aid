@@ -23,7 +23,12 @@ export function middleware(request: NextRequest) {
   const publicPaths = [
     '/signin',
     '/register',
+    '/forgot-password',
+    '/reset-password',
     '/api/users/login',
+    '/api/auth/register',
+    '/api/auth/forgot-password',
+    '/api/auth/reset-password',
     '/api/visitors', // Allow visitor API
     '/api/debug', // Allow debug endpoints
   ]

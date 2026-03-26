@@ -77,28 +77,33 @@ export default function ParcelsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState<ParcelsResponse['pagination'] | null>(null)
 
   // Check if user is admin (you'll need to implement your own auth logic)
   const isAdmin = true // Replace with actual admin check
 
   // Fetch parcels on component mount
   useEffect(() => {
-    fetchParcels()
+    fetchParcels(undefined, 1)
   }, [])
 
-  const fetchParcels = async (search?: string) => {
+  const fetchParcels = async (search?: string, pageOverride?: number) => {
     try {
       setRefreshing(true)
       const params = new URLSearchParams()
       if (search) {
         params.append('search', search)
       }
+      params.append('page', String(pageOverride ?? page))
+      params.append('limit', '8')
 
       const response = await fetch(`/api/parcels?${params.toString()}`)
       const result: ParcelsResponse = await response.json()
 
       if (result.success) {
         setParcels(result.data)
+        setPagination(result.pagination ?? null)
       } else {
         console.error('Failed to fetch parcels:', result)
         toast.error('Failed to load parcels')
@@ -114,7 +119,8 @@ export default function ParcelsPage() {
   // Handle search
   const handleSearch = (value: string) => {
     setSearchTerm(value)
-    fetchParcels(value)
+    setPage(1)
+    fetchParcels(value, 1)
   }
 
   // Stats calculations
@@ -147,7 +153,7 @@ export default function ParcelsPage() {
 
       if (response.ok) {
         // Refresh the parcel list
-        fetchParcels(searchTerm)
+        fetchParcels(searchTerm, page)
         toast.success('Parcel marked as collected successfully')
       } else {
         const error = await response.json()
@@ -177,7 +183,7 @@ export default function ParcelsPage() {
 
         if (response.ok) {
           // Refresh the parcel list
-          fetchParcels(searchTerm)
+          fetchParcels(searchTerm, page)
           toast.success('Parcel deleted successfully')
         } else {
           const error = await response.json()
@@ -195,12 +201,12 @@ export default function ParcelsPage() {
 
   const handleAddParcel = () => {
     // Refresh the parcel list to include the new one
-    fetchParcels(searchTerm)
+    fetchParcels(searchTerm, page)
     setIsAddDialogOpen(false)
   }
 
   const refreshData = () => {
-    fetchParcels(searchTerm)
+    fetchParcels(searchTerm, page)
   }
 
   const getStatusBadge = (status: string) => {
@@ -490,6 +496,40 @@ export default function ParcelsPage() {
               </TableHeader>
               <TableBody>{renderTableBody()}</TableBody>
             </Table>
+          </div>
+          <div className="flex items-center justify-between gap-4 mt-4">
+            <Button
+              variant="outline"
+              disabled={!pagination?.hasPrevPage || refreshing}
+              onClick={() => {
+                const next = page - 1
+                if (next < 1) return
+                setPage(next)
+                fetchParcels(searchTerm, next)
+              }}
+            >
+              Previous
+            </Button>
+            <div className="text-sm text-muted-foreground">
+              Page <span className="font-medium text-foreground">{page}</span>
+              {pagination?.totalPages ? (
+                <>
+                  {' '}
+                  of <span className="font-medium text-foreground">{pagination.totalPages}</span>
+                </>
+              ) : null}
+            </div>
+            <Button
+              variant="outline"
+              disabled={!pagination?.hasNextPage || refreshing}
+              onClick={() => {
+                const next = page + 1
+                setPage(next)
+                fetchParcels(searchTerm, next)
+              }}
+            >
+              Next
+            </Button>
           </div>
         </CardContent>
       </Card>

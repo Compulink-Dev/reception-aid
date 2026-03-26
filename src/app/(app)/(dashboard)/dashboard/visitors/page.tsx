@@ -66,20 +66,24 @@ export default function VisitorsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState<VisitorsResponse['pagination'] | null>(null)
 
   // Fetch visitors on component mount
   useEffect(() => {
-    fetchVisitors()
+    fetchVisitors(undefined, 1)
   }, [])
 
   // Update your fetchVisitors function in VisitorsPage
-  const fetchVisitors = async (search?: string) => {
+  const fetchVisitors = async (search?: string, pageOverride?: number) => {
     try {
       setRefreshing(true)
       const params = new URLSearchParams()
       if (search) {
         params.append('search', search)
       }
+      params.append('page', String(pageOverride ?? page))
+      params.append('limit', '8')
 
       const response = await fetch(`/api/visitors?${params.toString()}`)
       const result: VisitorsResponse = await response.json()
@@ -92,6 +96,7 @@ export default function VisitorsPage() {
 
       if (result.success) {
         setVisitors(result.data)
+        setPagination(result.pagination ?? null)
       } else {
         console.error('Failed to fetch visitors:', result)
       }
@@ -105,7 +110,8 @@ export default function VisitorsPage() {
   // Handle search
   const handleSearch = (value: string) => {
     setSearchTerm(value)
-    fetchVisitors(value)
+    setPage(1)
+    fetchVisitors(value, 1)
   }
 
   // Stats calculations
@@ -146,7 +152,7 @@ export default function VisitorsPage() {
       if (result.success) {
         // Check result.success
         toast.success('Visitor checked out successfully')
-        fetchVisitors(searchTerm)
+        fetchVisitors(searchTerm, page)
       } else {
         toast.error(`Failed to check out visitor: ${result.message || 'Unknown error'}`)
       }
@@ -172,7 +178,7 @@ export default function VisitorsPage() {
         if (result.success) {
           // Check result.success
           toast.success('Visitor deleted successfully')
-          fetchVisitors(searchTerm)
+          fetchVisitors(searchTerm, page)
         } else {
           toast.error(`Failed to delete visitor: ${result.message || 'Unknown error'}`)
         }
@@ -186,12 +192,12 @@ export default function VisitorsPage() {
   }
   const handleAddVisitor = (newVisitor: any) => {
     // Refresh the visitor list to include the new one
-    fetchVisitors(searchTerm)
+    fetchVisitors(searchTerm, page)
     setIsAddDialogOpen(false)
   }
 
   const refreshData = () => {
-    fetchVisitors(searchTerm)
+    fetchVisitors(searchTerm, page)
   }
 
   return (
@@ -399,6 +405,40 @@ export default function VisitorsPage() {
                 )}
               </TableBody>
             </Table>
+          </div>
+          <div className="flex items-center justify-between gap-4 mt-4">
+            <Button
+              variant="outline"
+              disabled={!pagination?.hasPrevPage || refreshing}
+              onClick={() => {
+                const next = page - 1
+                if (next < 1) return
+                setPage(next)
+                fetchVisitors(searchTerm, next)
+              }}
+            >
+              Previous
+            </Button>
+            <div className="text-sm text-muted-foreground">
+              Page <span className="font-medium text-foreground">{page}</span>
+              {pagination?.totalPages ? (
+                <>
+                  {' '}
+                  of <span className="font-medium text-foreground">{pagination.totalPages}</span>
+                </>
+              ) : null}
+            </div>
+            <Button
+              variant="outline"
+              disabled={!pagination?.hasNextPage || refreshing}
+              onClick={() => {
+                const next = page + 1
+                setPage(next)
+                fetchVisitors(searchTerm, next)
+              }}
+            >
+              Next
+            </Button>
           </div>
         </CardContent>
       </Card>

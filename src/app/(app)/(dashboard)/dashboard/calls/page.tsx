@@ -81,25 +81,30 @@ export default function CallsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState<PhoneCallsResponse['pagination'] | null>(null)
 
   // Fetch calls on component mount
   useEffect(() => {
-    fetchCalls()
+    fetchCalls(undefined, 1)
   }, [])
 
-  const fetchCalls = async (search?: string) => {
+  const fetchCalls = async (search?: string, pageOverride?: number) => {
     try {
       setRefreshing(true)
       const params = new URLSearchParams()
       if (search) {
         params.append('search', search)
       }
+      params.append('page', String(pageOverride ?? page))
+      params.append('limit', '8')
 
       const response = await fetch(`/api/phone-calls?${params.toString()}`)
       const result: PhoneCallsResponse = await response.json()
 
       if (result.success) {
         setCalls(result.data)
+        setPagination(result.pagination ?? null)
       } else {
         console.error('Failed to fetch calls:', result)
         toast.error('Failed to load calls')
@@ -115,7 +120,8 @@ export default function CallsPage() {
   // Handle search
   const handleSearch = (value: string) => {
     setSearchTerm(value)
-    fetchCalls(value)
+    setPage(1)
+    fetchCalls(value, 1)
   }
 
   // Calculate stats
@@ -134,7 +140,7 @@ export default function CallsPage() {
 
         if (response.ok) {
           toast.success('Call deleted successfully')
-          fetchCalls(searchTerm)
+          fetchCalls(searchTerm, page)
         } else {
           const error = await response.json()
           console.error('Failed to delete call:', error)
@@ -151,13 +157,13 @@ export default function CallsPage() {
 
   const handleAddCall = (newCall: any) => {
     // Refresh the call list to include the new one
-    fetchCalls(searchTerm)
+    fetchCalls(searchTerm, page)
     setIsAddDialogOpen(false)
     toast.success('Call logged successfully')
   }
 
   const refreshData = () => {
-    fetchCalls(searchTerm)
+    fetchCalls(searchTerm, page)
     toast.info('Refreshing calls...')
   }
 
@@ -406,6 +412,40 @@ export default function CallsPage() {
               </TableHeader>
               <TableBody>{renderTableBody()}</TableBody>
             </Table>
+          </div>
+          <div className="flex items-center justify-between gap-4 mt-4">
+            <Button
+              variant="outline"
+              disabled={!pagination?.hasPrevPage || refreshing}
+              onClick={() => {
+                const next = page - 1
+                if (next < 1) return
+                setPage(next)
+                fetchCalls(searchTerm, next)
+              }}
+            >
+              Previous
+            </Button>
+            <div className="text-sm text-muted-foreground">
+              Page <span className="font-medium text-foreground">{page}</span>
+              {pagination?.totalPages ? (
+                <>
+                  {' '}
+                  of <span className="font-medium text-foreground">{pagination.totalPages}</span>
+                </>
+              ) : null}
+            </div>
+            <Button
+              variant="outline"
+              disabled={!pagination?.hasNextPage || refreshing}
+              onClick={() => {
+                const next = page + 1
+                setPage(next)
+                fetchCalls(searchTerm, next)
+              }}
+            >
+              Next
+            </Button>
           </div>
         </CardContent>
       </Card>

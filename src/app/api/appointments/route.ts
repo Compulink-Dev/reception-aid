@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl
 
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const limit = parseInt(searchParams.get('limit') || '8')
     const status = searchParams.get('status')
     const date = searchParams.get('date')
     const employee = searchParams.get('employee')
