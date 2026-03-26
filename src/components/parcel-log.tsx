@@ -8,6 +8,15 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { parcelSchema } from '@/lib/validations'
 import { z } from 'zod'
 import { Plus, Trash2 } from 'lucide-react'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 
 type ParcelFormData = z.infer<typeof parcelSchema>
 
@@ -45,6 +54,9 @@ export default function ParcelLog() {
   const [serialNumbers, setSerialNumbers] = useState<Array<{ id: string; serialNumber: string }>>(
     [],
   )
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
 
   const {
     register,
@@ -164,6 +176,16 @@ export default function ParcelLog() {
       return to.name
     }
     return 'Unknown Employee'
+  }
+
+  const totalPages = Math.ceil(parcels.length / itemsPerPage)
+  const paginatedParcels = parcels.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
   }
 
   if (loading) return <div>Loading parcels...</div>
@@ -404,7 +426,7 @@ export default function ParcelLog() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {parcels.map((parcel) => (
+            {paginatedParcels.map((parcel) => (
               <tr key={parcel.id}>
                 <td className="px-6 py-4">
                   <div className="font-medium">{parcel.trackingNumber || 'No Tracking #'}</div>
@@ -457,6 +479,70 @@ export default function ParcelLog() {
             ))}
           </tbody>
         </table>
+
+        {totalPages > 1 && (
+          <div className="py-4 border-t border-gray-200">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (currentPage > 1) handlePageChange(currentPage - 1);
+                    }}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+                
+                {[...Array(totalPages)].map((_, i) => {
+                  const page = i + 1;
+                  if (
+                    page === 1 || 
+                    page === totalPages || 
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationLink 
+                          href="#" 
+                          isActive={page === currentPage}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(page);
+                          }}
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  } else if (
+                    page === currentPage - 2 || 
+                    page === currentPage + 2
+                  ) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                })}
+
+                <PaginationItem>
+                  <PaginationNext 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (currentPage < totalPages) handlePageChange(currentPage + 1);
+                    }}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </div>
     </div>
   )
